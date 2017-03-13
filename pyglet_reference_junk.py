@@ -31,7 +31,7 @@ class Window(pyglet.window.Window):
     #self.image_stream = open("image.png","rb")
     #self.image = pyglet.image.load("image.png",file=self.image_stream)
     # load an image from a file
-    self.image = pyglet.resource.image("image.png")
+    self.image = pyglet.resource.image("image.jpg")
     # get a part of an image
     self.image_part = self.image.get_region(x=100,y=100,width=100,height=100)
 
