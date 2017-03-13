@@ -4,7 +4,7 @@ from pyglet.gl import * # imports all opengl stuff
 
 
 # disable/enable error checking for increased/decreased performance
-pyglet.options['debug_gl'] = True
+pyglet.options['debug_gl'] = False
 
 
 class Window(pyglet.window.Window):
