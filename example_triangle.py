@@ -51,27 +51,22 @@ class Window(pyglet.window.Window):
     glLoadIdentity()
 
     # draw triangle with opengl
-    glBegin(GL_TRIANGLES)
-    glVertex2f(0,0)
-    glVertex2f(width,0)
-    glVertex2f(width,height)
+    glColor3f(0,0,255)
+    #glBegin(GL_TRIANGLES)
+    #glVertex2f(0,0)
+    #glVertex2f(width,0)
+    #glVertex2f(width,height)
+    #glEnd()
+
+    glBegin(GL_QUADS)
+    glVertex2f(10,10)
+    glVertex2f(width-10,10)
+    glVertex2f(width-20,height/2)
+    glVertex2f(width/2,height-10)
+    glVertex2f(20,height/2)
+    glVertex2f(10,10)
     glEnd()
 
-
-    # draw everything after this in this colour
-    pyglet.gl.glColor3f(0,0,255)
-
-    # draws a box with pyglet
-    pyglet.graphics.draw_indexed(4, pyglet.gl.GL_TRIANGLES,
-      [0, 1, 2, 0, 2, 3],
-      ('v2i', (799, 599,
-               400, 599,
-               400, 400,
-               799, 400)),
-    )
-
-    # set the colour to draw stuff after this with
-    pyglet.gl.glColor3f(255,255,255)
 
 
 window = Window()
