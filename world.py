@@ -91,7 +91,7 @@ class World:
     for z in self.world[x][y]:
       if top == None:
         top = z
-      elif z > top:
+      elif z >= top:
         top = z
     return top
 
@@ -123,11 +123,11 @@ class WorldRender():
     self.batch = pyglet.graphics.Batch()
 
 
-  def block_vertices(self,block):
+  def block_vertices(self, block, position):
     n = variables.cube_size
-    x = block.position[0]*n*2
-    y = block.position[2]*n*2
-    z = block.position[1]*n*2
+    x = position[0]*n*2
+    y = position[2]*n*2
+    z = position[1]*n*2
     return (
     # top
     x-n,y+n,z+n,
@@ -169,8 +169,8 @@ class WorldRender():
     self.batch = pyglet.graphics.Batch()
 
 
-  def load_block(self,block):
-    a = self.block_vertices(block)
+  def load_block(self, block, position):
+    a = self.block_vertices(block, position)
     c = self.block_colour(block)
 
     self.batch.add_indexed(24,GL_QUADS,None,
@@ -179,9 +179,12 @@ class WorldRender():
       ("c3B",c))
 
 
-  def load_blocks(self,blocks):
-    for block in blocks:
-      self.load_block(block)
+  def load_blocks(self, blocks, positions):
+    if len(position) != len(blocks):
+      raise Exception("need exactly a position for every block")
+
+    for i in range(0, len(position)):
+      self.load_block(blocks[i], position[i])
 
 
   def draw(self):
