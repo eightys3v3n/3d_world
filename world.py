@@ -77,7 +77,7 @@ class World:
   def get_block_pos_at(self,position):
     x = -position[0]/variables.cube_size/2
     y = -position[1]/variables.cube_size/2
-    z = -position[2]/variables.cube_size/2
+    z = position[2]/variables.cube_size/2
     x = round(x)
     y = round(y)
     z = round(z)

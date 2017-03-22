@@ -9,6 +9,7 @@ class Player:
     self.heading = [0.0,0.0,0.0]
     self.current_block = [0.0,0.0,0.0]
     self.visible = [0,0,0,0]
+    self.height  = variables.player_height
 
 
   def move(self,x,y,z):
@@ -53,7 +54,7 @@ class PlayerManager():
     self.player.look(x,y)
 
 
-  def move(self,x,y,z):
+  def move(self, x=0.0, y=0.0, z=0.0):
     if abs(x) > variables.move_speed[0]:
       x = variables.move_speed[0] * x/-x
     if abs(y) > variables.move_speed[1]:
@@ -64,8 +65,7 @@ class PlayerManager():
     if self.flying:
       self.player.move(x,y,z)
     else:
-      self.player.move(x,0,z)
-      self.jump()
+      self.player.move(x,y,z)
 
 
   def jump(self):
@@ -76,7 +76,7 @@ class PlayerManager():
     return self.player.current_block
 
 
-  def set_standing_on(self,new_block_pos):
+  def set_standing_on(self, new_block_pos):
     self.player.current_block = new_block_pos
     x = round(self.player.current_block[0]-variables.view_distance)
     x1 = round(self.player.current_block[0]+variables.view_distance)
@@ -96,4 +96,4 @@ class PlayerManager():
     glRotatef(self.player.heading[0],1,0,0)
     glRotatef(self.player.heading[1],0,1,0)
     glRotatef(self.player.heading[2],0,0,1)
-    glTranslatef(self.get_position()[0],self.get_position()[2],self.get_position()[1])
+    glTranslatef(self.get_position()[0],-self.get_position()[2],self.get_position()[1])

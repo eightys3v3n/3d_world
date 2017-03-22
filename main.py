@@ -15,10 +15,13 @@ pyglet.options['debug_gl'] = False
 
 
 class Window(pyglet.window.Window):
+  """
+  a class that contains the window, world, world rendering, player, event handling, generation
+  """
   def __init__(self):
     super(Window,self).__init__()                                     # initialize the window
-    self.set_size(variables.pixel_width,variables.pixel_height)       # set the window size
-    self.set_exclusive_mouse(True)                                    # lock the cursor to this window
+    self.set_size(variables.pixel_width, variables.pixel_height)      # set the window size
+    self.set_exclusive_mouse(False)                                    # lock the cursor to this window
     self.set_vsync(False)                                             # turn off vsync so the framerate isn't limited at your refresh rate
     self.keys = pyglet.window.key.KeyStateHandler()                   # allows for a is_this_key_pressed check
     self.push_handlers(self.keys)                                     # tells pyglet that it should keep track of when keys are pressed
@@ -28,7 +31,7 @@ class Window(pyglet.window.Window):
     self.generator = generator.Generator(self.world)                  # generates new chunks
 
     pyglet.clock.set_fps_limit(256)                                   # set the maximum framerate
-    pyglet.clock.schedule_interval(self.prevent_sleep,1.0/60.0)       # this prevents the application from 'smartly' sleeping when idle
+    pyglet.clock.schedule_interval(self.prevent_sleep, 1.0/60.0)      # this prevents the application from 'smartly' sleeping when idle
     #pyglet.clock.schedule_interval(self.reload_view,1.0)
 
     glEnable(GL_DEPTH_TEST)   # gpu can tell when stuff is infront or behind
@@ -37,10 +40,14 @@ class Window(pyglet.window.Window):
     glFrontFace(GL_CCW)       # used to determine the 'front' of a 2d shape
     glCullFace(GL_BACK)       # remove the backs of faces
 
-    b = block.Block(type="grass")  # the 0,0 block
-    self.world_render.load_block(b, [0, 0, 0])                 # load and draw the 0,0 block
-    self.loaded_blocks = 0
-    self.slow = False
+    b = block.Block(type="grass")               # create a block
+    self.world_render.load_block(b, [0, 0, 0])  # load and draw a block at 0,0,0
+    # this block is rendered but Not actually part of the world. It is for frame of reference
+
+    self.loaded_blocks = 0  # how many blocks are currently rendered
+    #self.slow = False
+
+    self.focus = False       # whether the mouse is locked or not
 
 
   def quit(self):
@@ -107,7 +114,7 @@ class Window(pyglet.window.Window):
 
   def check_user_input(self):
     """
-    check for keys that are pressed and act accordingly
+    check for keys that are currently pressed and act accordingly
     """
     x = 0.0
     y = 0.0
@@ -115,35 +122,43 @@ class Window(pyglet.window.Window):
     if self.keys[pyglet.window.key.LEFT] or self.keys[pyglet.window.key.A]:
       x += variables.move_speed[0]
     if self.keys[pyglet.window.key.RIGHT] or self.keys[pyglet.window.key.D]:
-      x += -variables.move_speed[0]
+      x -= variables.move_speed[0]
     if self.keys[pyglet.window.key.UP] or self.keys[pyglet.window.key.W]:
       y += variables.move_speed[1]
     if self.keys[pyglet.window.key.DOWN] or self.keys[pyglet.window.key.S]:
-      y += -variables.move_speed[1]
+      y -= variables.move_speed[1]
     if self.keys[pyglet.window.key.SPACE]:
-      z += -variables.move_speed[2]
-    if self.keys[pyglet.window.key.LSHIFT]:
       z += variables.move_speed[2]
+    if self.keys[pyglet.window.key.LSHIFT]:
+      z -= variables.move_speed[2]
 
     # only move the player if a button was pressed
     if x or y or z:
       self.player.move(x,y,z)
-      current = self.world.get_block_pos_at(self.player.get_position())
-      #print("standing on",current)
-      if current != self.player.standing_on():
-        self.player.set_standing_on(current)
 
 
   def player_physics(self):
-    standing_on = self.player.standing_on()
+    """
+    suppose to make the player fall to the ground if they aren't flying
+    """
+    standing_on = self.world.get_block_pos_at(self.player.get_position())
+    self.player.set_standing_on(standing_on)
+
     if not self.player.flying:
+      # get the highest block in the x,z that the player is in.
+      # should actually be 'get the highest block below the player'
       top_block_height = self.world.get_top_block_height(standing_on[0],standing_on[1])
-      if top_block_height != None:
-        print("top block height",top_block_height)
+
+      if top_block_height != None:                          # if there is a block in x, z
+        print("top block height",top_block_height)          # prints the highest block at x, z
+
+        # should print the height of the player, however it is not being updated unless the player
+        # is moving in the x or z direction
         print("player height",standing_on[2])
-        if self.player.standing_on()[2] > top_block_height:
+
+        if self.player.standing_on()[2] > top_block_height+self.player.player.height:    # if the player is above the top block
           print("falling")
-          self.player.move(0,0,variables.fall_speed[2])
+          self.player.move(variables.fall_speed.x, variables.fall_speed.y, variables.fall_speed.z)     # should move the player down
 
 
   def on_mouse_scroll(self,x,y,scroll_x,scroll_y):
@@ -161,12 +176,25 @@ class Window(pyglet.window.Window):
         variables.move_speed[i] = 0.01
 
 
+  def on_mouse_press(self, x, y, button, modifiers):
+    if button == pyglet.window.mouse.LEFT:
+      if not self.focus:
+        self.set_exclusive_mouse(True)
+        self.focus = True
+
+
   def on_mouse_motion(self,x,y,dx,dy):
-    self.player.look(-dy*variables.mouse_sensitivity[0],dx*variables.mouse_sensitivity[1])
+    if self.focus:
+      self.player.look(-dy*variables.mouse_sensitivity[0],dx*variables.mouse_sensitivity[1])
+
 
   def on_key_press(self,symbol,modifiers):
     if symbol == pyglet.window.key.F:
       self.player.flying = not self.player.flying
+
+    elif symbol == pyglet.window.key.ESCAPE:
+      self.focus = False
+      self.set_exclusive_mouse(False)
 
 
   def on_draw(self):
@@ -183,8 +211,13 @@ class Window(pyglet.window.Window):
 
 def main():
   window = Window()
-  pyglet.app.run()
-  window.quit()
+
+  try:
+    pyglet.app.run()
+  except KeyboardInterrupt:
+    pass
+  finally:
+    window.quit()
 
 
 if __name__ == "__main__":

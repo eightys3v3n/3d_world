@@ -1,13 +1,17 @@
+from utils import Position
+
+
 pixel_width = 800
 pixel_height = 600
 cube_size = 10
 mouse_sensitivity = [.2,.2]
 field_of_view = 65.0
 move_speed = [2,2,2]
-fall_speed = [.01,.01,5]
+fall_speed = Position(x=0.0, y=0.0, z=5.0)
 max_generation_requests = 100
 view_distance = 10
 blocks_per_frame = 300
+player_height           = 2
 
 
 # terrain height generation
