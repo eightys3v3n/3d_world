@@ -8,6 +8,7 @@ from time import time
 from time import sleep
 from noise import pnoise2
 import variables,world,player,generator,block
+import pdb
 
 
 # don't know how to use debugging; also suppose to increase performance when it's off
@@ -47,7 +48,8 @@ class Window(pyglet.window.Window):
     self.loaded_blocks = 0  # how many blocks are currently rendered
     #self.slow = False
 
-    self.focus = False       # whether the mouse is locked or not
+    self.focus = False      # whether the mouse is locked or not
+    self.debug = False      # whether to start the debugger next frame
 
 
   def quit(self):
@@ -134,31 +136,12 @@ class Window(pyglet.window.Window):
 
     # only move the player if a button was pressed
     if x or y or z:
-      self.player.move(x,y,z)
-
-
-  def player_physics(self):
-    """
-    suppose to make the player fall to the ground if they aren't flying
-    """
-    standing_on = self.world.get_block_pos_at(self.player.get_position())
-    self.player.set_standing_on(standing_on)
-
-    if not self.player.flying:
-      # get the highest block in the x,z that the player is in.
-      # should actually be 'get the highest block below the player'
-      top_block_height = self.world.get_top_block_height(standing_on[0],standing_on[1])
-
-      if top_block_height != None:                          # if there is a block in x, z
-        print("top block height",top_block_height)          # prints the highest block at x, z
-
-        # should print the height of the player, however it is not being updated unless the player
-        # is moving in the x or z direction
-        print("player height",standing_on[2])
-
-        if self.player.standing_on()[2] > top_block_height+self.player.player.height:    # if the player is above the top block
-          print("falling")
-          self.player.move(variables.fall_speed.x, variables.fall_speed.y, variables.fall_speed.z)     # should move the player down
+      if not self.player._flying:
+        self.player.move(x,y,0)
+        if z > 0:
+          self.player.jump()
+      else:
+        self.player.move(x,y,z)
 
 
   def on_mouse_scroll(self,x,y,scroll_x,scroll_y):
@@ -190,16 +173,24 @@ class Window(pyglet.window.Window):
 
   def on_key_press(self,symbol,modifiers):
     if symbol == pyglet.window.key.F:
-      self.player.flying = not self.player.flying
+      self.player.flying()
 
     elif symbol == pyglet.window.key.ESCAPE:
       self.focus = False
       self.set_exclusive_mouse(False)
 
+    elif symbol == pyglet.window.key.D and modifiers & pyglet.window.key.MOD_ALT:
+      self.set_exclusive_mouse(False)
+      self.focus = False
+      self.debug = True
+
 
   def on_draw(self):
+    if self.debug:
+      pdb.set_trace()
+
     self.reload_view(None)
-    self.player_physics()
+    self.player.update_physics(self.world)
     self.check_user_input()
 
     self.clear()

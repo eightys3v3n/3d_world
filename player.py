@@ -1,6 +1,6 @@
 from pyglet.gl import *
 from math import cos,hypot,degrees,radians,sin,atan2
-import variables
+import variables, utils
 
 
 class Player:
@@ -43,7 +43,21 @@ class Player:
 class PlayerManager():
   def __init__(self):
     self.player = Player()
-    self.flying = True
+    self._flying = True
+    self.velocity = utils.Position(0, 0, 0)
+    self.can_jump = True
+
+
+  def flying(self, status=None):
+    if status is None:
+      status = not self._flying
+
+    if status:
+      self.velocity.z = 0
+      self._flying = True
+
+    else:
+      self._flying = False
 
 
   def get_position(self):
@@ -62,14 +76,18 @@ class PlayerManager():
     if abs(z) > variables.move_speed[2]:
       z = variables.move_speed[2] * z/-z
 
-    if self.flying:
+    if self._flying:
       self.player.move(x,y,z)
     else:
       self.player.move(x,y,z)
 
 
   def jump(self):
-    print("jump not implimented")
+    if self.can_jump:
+      print("would jump")
+
+    else:
+      print("can't jump")
 
 
   def standing_on(self):
@@ -87,6 +105,40 @@ class PlayerManager():
 
   def get_visible(self):
     return self.player.visible
+
+
+  def update_physics(self, world):
+    """
+    suppose to make the player fall to the ground if they aren't flying
+    """
+    standing_on = world.get_block_pos_at(self.get_position())
+    self.set_standing_on(standing_on)
+
+    if not self._flying:
+      # get the highest block in the x,z that the player is in.
+      # should actually be 'get the highest block below the player'
+      top_block_height = world.get_top_block_height(standing_on[0], standing_on[1])
+
+      if top_block_height != None:                          # if there is a block in x, z
+        print("top block height", top_block_height)          # prints the highest block at x, z
+
+        # should print the height of the player, however it is not being updated unless the player
+        # is moving in the x or z direction
+        print("player height", standing_on[2])
+
+        if self.standing_on()[2] > top_block_height+self.player.height:    # if the player is above the top block
+          self.velocity += variables.fall_speed
+          self.can_jump = False
+          #self.move(variables.fall_speed.x, variables.fall_speed.y, variables.fall_speed.z)     # should move the player down
+
+        elif self.standing_on()[2] == top_block_height+self.player.height:
+          self.velocity.z = 0
+          self.can_jump = True
+
+        else:
+          self.velocity.z = 0
+
+    self.move(self.velocity.x, self.velocity.y, self.velocity.z)
 
 
   def draw_perspective(self):
