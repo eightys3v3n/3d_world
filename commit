@@ -1,0 +1,30 @@
+#!/bin/bash
+
+if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]
+then
+  printf "run me and i'll walk you through committing stuff with git\n"
+  eixt 2
+fi
+
+git status
+read -p "'file1' 'file2': " -i "$PWD/ " -e input
+
+
+files=()
+for i in $input
+do
+  files+=("$i")
+done
+
+root="$PWD/"
+files=${files[@]:1:}
+for f in ${files[@]}
+do
+  git add "$f"
+done
+
+
+read -p "msg: " commit_msg
+
+git commit -m "$commit_msg"
+git push
