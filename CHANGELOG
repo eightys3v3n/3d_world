@@ -1,1 +1,3 @@
-$Id$
+52f9a851d30dc776f1cbe760fc76afab83bc8a2e:
+  player.jump() works
+  player is 'bounced' above ground when they move below the top block
