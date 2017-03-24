@@ -1,3 +1,9 @@
 52f9a851d30dc776f1cbe760fc76afab83bc8a2e:
   player.jump() works
   player is 'bounced' above ground when they move below the top block
+
+
+240e77b350ccd721e48960ade65c523eb232f025:
+  player is moved one block up while they are below the top block
+  jump works okay
+  player height is 1 but it should be 2?
