@@ -3,12 +3,14 @@ import world
 import player
 import generator
 import block
-from pyglet.gl import *
-from math import floor
-from threading import Thread
-from time import time
-from time import sleep
-from noise import pnoise2
+import pdb
+from pyglet.gl  import *
+from math       import floor
+from threading  import Thread
+from time       import time
+from time       import sleep
+from noise      import pnoise2
+from variables  import window_width, window_height
 
 
 class Game(pyglet.window.Window):
@@ -16,36 +18,42 @@ class Game(pyglet.window.Window):
   a class that contains the window, world, world rendering, player, event handling, generation
   """
   def __init__(self):
-    super(Game,self).__init__()                                     # initialize the window
-    self.set_size(variables.pixel_width, variables.pixel_height)      # set the window size
-    self.set_exclusive_mouse(False)                                    # lock the cursor to this window
-    self.set_vsync(False)                                             # turn off vsync so the framerate isn't limited at your refresh rate
-    self.keys = pyglet.window.key.KeyStateHandler()                   # allows for a is_this_key_pressed check
-    self.push_handlers(self.keys)                                     # tells pyglet that it should keep track of when keys are pressed
-    self.world = world.World()                                        # the world
-    self.player = player.PlayerManager()                              # the player and/or perspective
-    self.world_render = world.WorldRender()                           # draws the world
-    self.generator = generator.Generator(self.world)                  # generates new chunks
+    # setup the window
+    super(Game,self).__init__()                      # initialize the window
+    self.set_size(window_width, window_height)       # set the window size
+    self.set_exclusive_mouse(False)                  # lock the cursor to this window
+    self.set_vsync(False)                            # turn off vsync so the framerate isn't limited at your refresh rate
 
-    pyglet.clock.set_fps_limit(256)                                   # set the maximum framerate
-    pyglet.clock.schedule_interval(self.prevent_sleep, 1.0/60.0)      # this prevents the application from 'smartly' sleeping when idle
-    #pyglet.clock.schedule_interval(self.reload_view,1.0)
+    # setup keyboard event handling
+    self.keys = pyglet.window.key.KeyStateHandler()  # allows for a is_this_key_pressed check
+    self.push_handlers(self.keys)                    # tells pyglet that it should keep track of when keys are pressed
 
-    glEnable(GL_DEPTH_TEST)   # gpu can tell when stuff is infront or behind
-    glDepthFunc(GL_LESS)      # anything closer should be drawn
-    glEnable(GL_CULL_FACE)    # don't draw faces that are behind something
-    glFrontFace(GL_CCW)       # used to determine the 'front' of a 2d shape
-    glCullFace(GL_BACK)       # remove the backs of faces
+    # setup game
+    self.world = world.World()                       # the world
+    self.player = player.PlayerManager()             # the player and/or perspective
+    self.world_render = world.WorldRender()          # draws the world
+    self.generator = generator.Generator(self.world) # generates new chunks
 
-    b = block.Block(type="grass")               # create a block
-    self.world_render.load_block(b, [0, 0, 0])  # load and draw a block at 0,0,0
-    # this block is rendered but Not actually part of the world. It is for frame of reference
+    pyglet.clock.set_fps_limit(256)                              # set the maximum framerate
+    pyglet.clock.schedule_interval(self.prevent_sleep, 1.0/60.0) # this prevents the application from 'smartly' sleeping when idle
 
-    self.loaded_blocks = 0  # how many blocks are currently rendered
-    #self.slow = False
+    pyglet.clock.schedule_interval(self.player.update_physics, variables.physics_updates, self.world)
 
-    self.focus = False      # whether the mouse is locked or not
-    self.debug = False      # whether to start the debugger next frame
+    glEnable(GL_DEPTH_TEST) # gpu can tell when stuff is infront or behind
+    glDepthFunc(GL_LESS)    # anything closer should be drawn
+    glEnable(GL_CULL_FACE)  # don't draw faces that are behind something
+    glFrontFace(GL_CCW)     # used to determine the 'front' of a 2d shape
+    glCullFace(GL_BACK)     # remove the backs of faces
+
+
+    self.loaded_blocks = 0 # how many blocks are currently rendered
+
+    self.focus = False     # whether the mouse is locked or not
+    self.debug = False     # whether to start the debugger next frame
+
+    # render a reference block
+    b = block.Block(type="grass")              # create a block
+    self.world_render.load_block(b, [0, 0, 0]) # load and draw a block at 0,0,0
 
 
   def quit(self):
@@ -117,6 +125,8 @@ class Game(pyglet.window.Window):
     x = 0.0
     y = 0.0
     z = 0.0
+
+    # player movement
     if self.keys[pyglet.window.key.LEFT] or self.keys[pyglet.window.key.A]:
       x += variables.move_speed[0]
     if self.keys[pyglet.window.key.RIGHT] or self.keys[pyglet.window.key.D]:
@@ -130,7 +140,7 @@ class Game(pyglet.window.Window):
     if self.keys[pyglet.window.key.LSHIFT]:
       z -= variables.move_speed[2]
 
-    # only move the player if a button was pressed
+    # only try to move the player if a button was pressed
     if x or y or z:
       if not self.player._flying:
         self.player.move(x,y,0)
@@ -183,10 +193,10 @@ class Game(pyglet.window.Window):
 
   def on_draw(self):
     if self.debug:
+      self.debug = False
       pdb.set_trace()
 
     self.reload_view(None)
-    self.player.update_physics(self.world)
     self.check_user_input()
 
     self.clear()

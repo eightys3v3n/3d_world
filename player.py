@@ -1,6 +1,7 @@
 from pyglet.gl import *
 from math import cos,hypot,degrees,radians,sin,atan2
 import variables, utils
+from variables import window_height, window_width, cube_size
 
 
 class Player:
@@ -46,6 +47,7 @@ class PlayerManager():
     self._flying = True
     self.velocity = utils.Position(0, 0, 0)
     self.can_jump = True
+    self.prev = utils.Position(0, 0, 0)
 
 
   def flying(self, status=None):
@@ -69,25 +71,42 @@ class PlayerManager():
 
 
   def move(self, x=0.0, y=0.0, z=0.0):
+    if not x and not y and not z:
+      return
+
     if abs(x) > variables.move_speed[0]:
       x = variables.move_speed[0] * x/-x
     if abs(y) > variables.move_speed[1]:
       y = variables.move_speed[1] * y/-y
-    if abs(z) > variables.move_speed[2]:
-      z = variables.move_speed[2] * z/-z
+    if abs(z) > variables.max_fall_speed:
+      z = variables.max_fall_speed * z/-z
 
     if self._flying:
       self.player.move(x,y,z)
     else:
       self.player.move(x,y,z)
 
+    self.print_position()
+
+
+  def print_position(self):
+    x = round(self.player.position[0] / cube_size, 4)
+    y = round(self.player.position[1] / cube_size, 4)
+    z = round(self.player.position[2] / cube_size, 4)
+
+    s = '{:0< 6.4f}, {:0^ 6.4f}, {:0> 6.4f}'.format(x, y, z)
+    print(s)
+
 
   def jump(self):
     if self.can_jump:
-      print("would jump")
+      self.velocity.z += 10
+      print("jump")
 
     else:
       print("can't jump")
+
+    self.print_position()
 
 
   def standing_on(self):
@@ -107,7 +126,7 @@ class PlayerManager():
     return self.player.visible
 
 
-  def update_physics(self, world):
+  def update_physics(self, dt, world):
     """
     suppose to make the player fall to the ground if they aren't flying
     """
@@ -120,23 +139,25 @@ class PlayerManager():
       top_block_height = world.get_top_block_height(standing_on[0], standing_on[1])
 
       if top_block_height != None:                          # if there is a block in x, z
-        print("top block height", top_block_height)          # prints the highest block at x, z
-
-        # should print the height of the player, however it is not being updated unless the player
-        # is moving in the x or z direction
-        print("player height", standing_on[2])
-
         if self.standing_on()[2] > top_block_height+self.player.height:    # if the player is above the top block
-          self.velocity += variables.fall_speed
+          self.velocity += variables.player_fall_acc
           self.can_jump = False
           #self.move(variables.fall_speed.x, variables.fall_speed.y, variables.fall_speed.z)     # should move the player down
 
         elif self.standing_on()[2] == top_block_height+self.player.height:
-          self.velocity.z = 0
+          if self.velocity.z < 0:
+            print("standing on the ground, resetting down velocity")
+            self.velocity.z = 0
           self.can_jump = True
 
         else:
-          self.velocity.z = 0
+          print("standing in the ground, raising to surface")
+          self.can_jump = True
+          self.velocity.z = 10
+
+    if self.prev != self.velocity:
+      self.prev = self.velocity
+      print("velocity ", self.velocity)
 
     self.move(self.velocity.x, self.velocity.y, self.velocity.z)
 
@@ -144,7 +165,7 @@ class PlayerManager():
   def draw_perspective(self):
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluPerspective(variables.field_of_view, variables.pixel_width/variables.pixel_height, 0.1, 10000.0)
+    gluPerspective(variables.field_of_view, window_width/window_height, 0.1, 10000.0)
     glRotatef(self.player.heading[0],1,0,0)
     glRotatef(self.player.heading[1],0,1,0)
     glRotatef(self.player.heading[2],0,0,1)

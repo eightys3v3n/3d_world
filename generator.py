@@ -1,8 +1,9 @@
 from queue import Queue
 from threading import Thread
-from noise import snoise2
+from noise import snoise3
 from block import Block
 from world import World
+from variables import seed
 import variables
 
 
@@ -48,8 +49,9 @@ class GeneratorThread(Thread):
 
 
   def generate_height(self,x,y):
-    noise = snoise2(x/variables.x_scale,
+    noise = snoise3(x/variables.x_scale,
                     y/variables.y_scale,
+                    seed,
                     octaves=5,
                     persistence=0.5)*20
     #noise = map(noise,0,10,variables.z_min,variables.z_max)

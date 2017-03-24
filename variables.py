@@ -1,18 +1,26 @@
-from utils import Position
+from utils  import Position
+from time   import time
+from random import randint
 
 
-pixel_width = 800
-pixel_height = 600
-cube_size = 10
-mouse_sensitivity = [.2,.2]
-field_of_view = 65.0
-move_speed = [2,2,2]
-fall_speed = Position(x=0.0, y=0.0, z=5.0)
+window_width            = 800
+window_height           = 600
+maximum_framerate       = 256
 max_generation_requests = 100
-view_distance = 10
-blocks_per_frame = 300
-player_height           = 2
+blocks_per_frame        = 300
 
+cube_size         = 10
+field_of_view     = 65.0
+mouse_sensitivity = [.2,.2]
+view_distance     = 10
+player_height     = 2
+
+move_speed    = [2,2,3]
+max_fall_speed    = 30
+player_fall_acc   = Position(x=0.0, y=0.0, z=-3.0)
+physics_updates   = 1/10.0
+
+seed              = randint(0,10000000)
 
 # terrain height generation
 x_scale = 70

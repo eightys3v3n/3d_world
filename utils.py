@@ -19,6 +19,32 @@ class Position:
     self.z += o.z
 
 
+  def __eq__(self, o):
+    if self.x != o.x:
+      return False
+
+    if self.y != o.y:
+      return False
+
+    if self.z != o.z:
+      return False
+
+    return True
+
+
+  def __ne__(self, o):
+    if self.x != o.x:
+      return True
+
+    if self.y != o.y:
+      return True
+
+    if self.z != o.z:
+      return True
+
+    return False
+
+
   def __str__(self):
     return "("+str(self.x)+", "+str(self.y)+", "+str(self.z)+")"
 
