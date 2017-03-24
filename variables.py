@@ -15,9 +15,9 @@ mouse_sensitivity = [.2,.2]
 view_distance     = 10
 player_height     = 2
 
-move_speed    = [2,2,3]
+move_speed    = [4, 4, 4]
 max_fall_speed    = 30
-player_fall_acc   = Position(x=0.0, y=0.0, z=-3.0)
+player_fall_acc   = Position(x=0.0, y=0.0, z=-5.0)
 physics_updates   = 1/10.0
 
 seed              = randint(0,10000000)

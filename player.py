@@ -100,7 +100,8 @@ class PlayerManager():
 
   def jump(self):
     if self.can_jump:
-      self.velocity.z += 10
+      self.velocity.z += 7
+      self.can_jump = False
       print("jump")
 
     else:
@@ -153,7 +154,8 @@ class PlayerManager():
         else:
           print("standing in the ground, raising to surface")
           self.can_jump = True
-          self.velocity.z = 10
+          self.player.move(0, 0, cube_size*2)
+          self.velocity.z = 0
 
     if self.prev != self.velocity:
       self.prev = self.velocity
