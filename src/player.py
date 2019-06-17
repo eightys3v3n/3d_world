@@ -150,7 +150,7 @@ class PlayerManager():
     return self.player.visible
 
 
-  def update_physics(self, dt, world):
+  def update_physics(self, dt):
     """
     suppose to make the player fall to the ground if they aren't flying
     """
