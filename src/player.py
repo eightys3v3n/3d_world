@@ -154,16 +154,14 @@ class PlayerManager():
     """
     suppose to make the player fall to the ground if they aren't flying
     """
-    standing_on = world.get_block_pos_at(self.get_position())
-    self.set_standing_on(standing_on)
-
     if not self._flying:
       # get the highest block in the x,z that the player is in.
       # should actually be 'get the highest block below the player'
-      top_block_height = world.get_top_block_height(standing_on[0], standing_on[1])
+      top_block_height = self.world.get_top_block_height(self.position[0], self.position[1])
 
       if top_block_height != None:                          # if there is a block in x, z
-        if self.standing_on()[2] > top_block_height+self.player.height:    # if the player is above the top block
+        if self.get_standing_on()[2] > top_block_height:    # if the player is above the top block
+          print("Falling!")
           self.velocity += variables.player_fall_acc
           self.can_jump = False
           #self.move(variables.fall_speed.x, variables.fall_speed.y, variables.fall_speed.z)     # should move the player down
