@@ -1,16 +1,16 @@
 from pyglet.gl import *
 from math import cos,hypot,degrees,radians,sin,atan2
 import variables, utils
+import math
 from variables import window_height, window_width, cube_size
 
 
 class Player:
   def __init__(self):
-    self.position = [0.0,0.0,0.0]
-    self.heading = [0.0,0.0,0.0]
-    self.current_block = [0.0,0.0,0.0]
-    self.visible = [0,0,0,0]
-    self.height  = variables.player_height
+    self.position = variables.player.initial_position
+    self.heading = variables.player.initial_heading
+    self.visible = [0, 0, 0, 0]
+    self.height  = variables.player.height
 
 
   def move(self,x,y,z):
@@ -42,8 +42,9 @@ class Player:
 
 
 class PlayerManager():
-  def __init__(self):
+  def __init__(self, world):
     self.player = Player()
+    self.world = world
     self._flying = True
     self.velocity = utils.Position(0, 0, 0)
     self.can_jump = True
@@ -69,6 +70,9 @@ class PlayerManager():
   def look(self,x,y):
     self.player.look(x,y)
 
+    if variables.player.debug.print_player_heading:
+      self.print_heading()
+
 
   def move(self, x=0.0, y=0.0, z=0.0):
     if not x and not y and not z:
@@ -86,8 +90,17 @@ class PlayerManager():
     else:
       self.player.move(x,y,z)
 
-    if variables.debug.print_player_position:
+    if variables.player.debug.print_player_position:
       self.print_position()
+      self.print_standing_on()
+
+
+  def print_heading(self):
+    x = round(self.player.heading[0], 4)
+    y = round(self.player.heading[1], 4)
+
+    s = 'Player heading: {:0< 6.4f}, {:0> 6.4f}'.format(x, y)
+    print(s)
 
 
   def print_position(self):
@@ -96,6 +109,15 @@ class PlayerManager():
     z = round(self.player.position[2] / cube_size, 4)
 
     s = 'Player Position: {:0< 6.4f}, {:0^ 6.4f}, {:0> 6.4f}'.format(x, y, z)
+    print(s)
+
+
+  def print_standing_on(self):
+    x = round(self.get_standing_on()[0], 4)
+    y = round(self.get_standing_on()[1], 4)
+    z = round(self.get_standing_on()[2], 4)
+
+    s = 'Player standing on: {:0< 6.4f}, {:0^ 6.4f}, {:0> 6.4f}'.format(x, y, z)
     print(s)
 
 

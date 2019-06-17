@@ -1,6 +1,5 @@
 import pyglet
 from pyglet.gl import *
-from noise import pnoise2
 from math import ceil
 import variables
 

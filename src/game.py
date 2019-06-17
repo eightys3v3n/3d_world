@@ -23,7 +23,7 @@ class Game(pyglet.window.Window):
     super(Game,self).__init__()                      # initialize the window
     self.set_size(window_width, window_height)       # set the window size
     self.set_exclusive_mouse(False)                  # lock the cursor to this window
-    self.set_vsync(False)                            # turn off vsync so the framerate isn't limited at your refresh rate
+    self.set_vsync(variables.vsync)                  # turn off vsync so the framerate isn't limited at your refresh rate
 
     # setup keyboard event handling
     self.keys = pyglet.window.key.KeyStateHandler()  # allows for a is_this_key_pressed check
@@ -31,14 +31,14 @@ class Game(pyglet.window.Window):
 
     # setup game
     self.world = world.World()                       # the world
-    self.player = player.PlayerManager()             # the player and/or perspective
+    self.player = player.PlayerManager(self.world)        # the player and/or perspective
     self.world_render = world.WorldRender()          # draws the world
     self.generator = generator.Generator(self.world) # generates new chunks
 
-    pyglet.clock.set_fps_limit(256)                              # set the maximum framerate
+    pyglet.clock.set_fps_limit(variables.maximum_framerate)      # set the maximum framerate
     pyglet.clock.schedule_interval(self.prevent_sleep, 1.0/60.0) # this prevents the application from 'smartly' sleeping when idle
 
-    pyglet.clock.schedule_interval(self.player.update_physics, variables.physics_updates, self.world)
+    pyglet.clock.schedule_interval(self.player.update_physics, variables.physics_updates)
 
     glEnable(GL_DEPTH_TEST) # gpu can tell when stuff is infront or behind
     glDepthFunc(GL_LESS)    # anything closer should be drawn
@@ -94,11 +94,11 @@ class Game(pyglet.window.Window):
           column_pos = self.world.get_column_pos(a,b)
 
           for pos in column_pos:
-            if not self.world.get_loaded(pos[0],pos[1],pos[2]): # don'y draw if it is already loaded
-              if count <= variables.blocks_per_frame:           # stop drawing if count is more than the max blocks drawn per frame
+            if not self.world.get_loaded(pos[0],pos[1],pos[2]): # don't draw if it is already loaded
+              if count <= variables.renderer.blocks_drawn_per_frame:           # stop drawing if count is more than the max blocks drawn per frame
 
                 # load a block; to be drawn from now until cleared.
-                self.world_render.load_block(self.world.get_block(pos[0],pos[1],pos[2]), [pos[0], pos[1], pos[2]])
+                self.world_render.load_block(self.world.get_block(*pos), [pos[0], pos[1], pos[2]])
 
                 # flag the block as currently loaded
                 self.world.set_loaded(pos[0],pos[1],pos[2],1)
@@ -107,7 +107,7 @@ class Game(pyglet.window.Window):
 
         else:
           # generate the column if it isn't already
-          self.generator.request_column(a,b)
+          self.generator.request_column(a, b)
 
     # unloads all blocks once max_blocks are rendered.
     # again only to fix a bug on my computer, everyone else comment this out.
@@ -151,19 +151,22 @@ class Game(pyglet.window.Window):
         self.player.move(x,y,z)
 
 
-  def on_mouse_scroll(self,x,y,scroll_x,scroll_y):
+  def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
     if scroll_y < 0:
-      variables.move_speed[0] -= 0.5
-      variables.move_speed[1] -= 0.5
-      variables.move_speed[2] -= 0.5
+      variables.move_speed[0] -= 0.1
+      variables.move_speed[1] -= 0.1
+      variables.move_speed[2] -= 0.1
     elif scroll_y > 0:
-      variables.move_speed[0] += 0.5
-      variables.move_speed[1] += 0.5
-      variables.move_speed[2] += 0.5
+      variables.move_speed[0] += 0.1
+      variables.move_speed[1] += 0.1
+      variables.move_speed[2] += 0.1
 
-    for i in range(len(variables.move_speed)):
-      if variables.move_speed[i] <= 0:
-        variables.move_speed[i] = 0.01
+    for i, m in enumerate(variables.move_speed):
+      if m < 0:
+        variables.move_speed[i] = 0.001
+
+    if variables.debug.print_move_speed:
+      print("New move speed: {}, {}, {}".format(round(variables.move_speed[0], 4), round(variables.move_speed[1], 4), round(variables.move_speed[2], 4)))
 
 
   def on_mouse_press(self, x, y, button, modifiers):
