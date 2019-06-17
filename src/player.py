@@ -8,6 +8,7 @@ from variables import window_height, window_width, cube_size
 class Player:
   def __init__(self):
     self.position = variables.player.initial_position
+    self.current_block = [0, 0, 0]
     self.heading = variables.player.initial_heading
     self.visible = [0, 0, 0, 0]
     self.height  = variables.player.height
@@ -113,9 +114,9 @@ class PlayerManager():
 
 
   def print_standing_on(self):
-    x = round(self.get_standing_on()[0], 4)
-    y = round(self.get_standing_on()[1], 4)
-    z = round(self.get_standing_on()[2], 4)
+    x = round(self.standing_on()[0], 4)
+    y = round(self.standing_on()[1], 4)
+    z = round(self.standing_on()[2], 4)
 
     s = 'Player standing on: {:0< 6.4f}, {:0^ 6.4f}, {:0> 6.4f}'.format(x, y, z)
     print(s)
@@ -154,13 +155,15 @@ class PlayerManager():
     """
     suppose to make the player fall to the ground if they aren't flying
     """
+    self.set_standing_on(self.world.get_block_pos_at(self.player.position))
+
     if not self._flying:
       # get the highest block in the x,z that the player is in.
       # should actually be 'get the highest block below the player'
-      top_block_height = self.world.get_top_block_height(self.position[0], self.position[1])
+      top_block_height = self.world.get_top_block_height(self.player.position[0], self.player.position[1])
 
       if top_block_height != None:                          # if there is a block in x, z
-        if self.get_standing_on()[2] > top_block_height:    # if the player is above the top block
+        if self.standing_on()[2] > top_block_height+self.player.height:    # if the player is above the top block
           print("Falling!")
           self.velocity += variables.player_fall_acc
           self.can_jump = False

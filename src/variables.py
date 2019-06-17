@@ -34,7 +34,7 @@ mouse_sensitivity = [.2,.2]
 # Number of blocks away from player to generate. Generates 40 blocks -x, +x, -z, +z
 generate_distance = 10
 
-move_speed    = [0.1, 0.1, 0.1]
+move_speed    = [4, 4, 4]
 max_fall_speed    = 30
 player_fall_acc   = Position(x=0.0, y=0.0, z=-5.0)
 physics_updates   = 1/30.0
@@ -52,7 +52,7 @@ class generator:
     z_max = 20
 
     # the amount of detail?
-    octaves = 10
+    octaves = 5
 
     persistence = .5
     lacunarity = 5.0

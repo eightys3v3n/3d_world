@@ -66,14 +66,14 @@ class GeneratorThread(Thread):
 
 
   def generate_column(self, x, y):
-    if x is not None and y is not None:
-      height = self.generate_height(x, y)
-      for z in range(variables.generator.z_min, height):
-        self.generate_type(x, y, z)
+    height = self.generate_height(x, y)
+    for z in range(variables.generator.z_min, height):
+      self.generate_type(x, y, z)
 
 
   def run(self):
     while self.running:
       x, y = self.queue.get()
-      self.generate_column(x, y)
-      self.queue.task_done()
+      if x is not None and y is not None:
+        self.generate_column(x, y)
+        self.queue.task_done()

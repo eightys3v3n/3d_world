@@ -87,9 +87,9 @@ class Game(pyglet.window.Window):
     #  print("loaded blocks",self.loaded_blocks)
 
     count = 0                               # keeps track of how many blocks were drawn this frame
-    x,y,x1,y1 = self.player.get_visible()   # the square that should be visible to the player
-    for a in range(x,x1):
-      for b in range(y,y1):
+    x, y, x1, y1 = self.player.get_visible()   # the square that should be visible to the player
+    for a in range(x, x1):
+      for b in range(y, y1):
         if self.world.column_exists(a,b):                       # if the column of blocks at (a,b) is generated
           column_pos = self.world.get_column_pos(a,b)
 
