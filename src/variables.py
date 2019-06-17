@@ -6,11 +6,11 @@ from random import randint
 window_width            = 1280
 window_height           = 1024
 maximum_framerate       = 256
-max_generation_requests = 100
+max_generation_requests = 100_000
 vsync                   = True
 
 class player:
-    initial_position = [0.0, 0.0, 0.0]
+    initial_position = [0.0, 0.0, 1000.0]
     initial_heading  = [90.0, 0.0, 0.0]
     height = 2
     class debug:
@@ -61,6 +61,7 @@ class generator:
     base = z_min
     class debug:
         print_requested_columns = True
+        print_caught_columns = True
 
 class debug:
     print_move_speed = True

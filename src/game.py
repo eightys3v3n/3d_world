@@ -12,6 +12,7 @@ from time       import sleep
 from noise      import pnoise2
 from variables  import window_width, window_height
 import variables
+import itertools
 
 
 class Game(pyglet.window.Window):
@@ -72,6 +73,33 @@ class Game(pyglet.window.Window):
     pass
 
 
+  def render_columns(self, x, y, x1, y1):
+    count = 0
+    positions = list(itertools.product(range(x, x1), range(y, y1)))
+    while len(positions) > 0:
+      for a, b in positions:
+        if not self.world.column_exists(a,b):                       # if the column of blocks at (a,b) is generated
+          self.generator.request_column(a, b)
+          continue
+
+        column_pos = self.world.get_column_pos(a,b)
+
+        for pos in column_pos:
+          if not self.world.get_loaded(pos[0],pos[1],pos[2]): # don't draw if it is already loaded
+            if count <= variables.renderer.blocks_drawn_per_frame:           # stop drawing if count is more than the max blocks drawn per frame
+
+              # load a block; to be drawn from now until cleared.
+              self.world_render.load_block(self.world.get_block(*pos), [pos[0], pos[1], pos[2]])
+
+              # flag the block as currently loaded
+              self.world.set_loaded(pos[0],pos[1],pos[2],1)
+              self.loaded_blocks += 1                       # number of blocks currently loaded
+              count += 1                                    # number of blocks loaded this frame
+        positions.remove((a, b))
+
+
+
+
   def reload_view(self,dt):
     """
     clear the rendered world
@@ -86,28 +114,29 @@ class Game(pyglet.window.Window):
     #    self.player.player.position = [0.0,0.0,0.0]
     #  print("loaded blocks",self.loaded_blocks)
 
-    count = 0                               # keeps track of how many blocks were drawn this frame
-    x, y, x1, y1 = self.player.get_visible()   # the square that should be visible to the player
-    for a in range(x, x1):
-      for b in range(y, y1):
-        if self.world.column_exists(a,b):                       # if the column of blocks at (a,b) is generated
-          column_pos = self.world.get_column_pos(a,b)
-
-          for pos in column_pos:
-            if not self.world.get_loaded(pos[0],pos[1],pos[2]): # don't draw if it is already loaded
-              if count <= variables.renderer.blocks_drawn_per_frame:           # stop drawing if count is more than the max blocks drawn per frame
+    #count = 0                               # keeps track of how many blocks were drawn this frame
+    visible = self.player.get_visible()   # the square that should be visible to the player
+    self.render_columns(*visible)
+#    for a in range(x, x1):
+#      for b in range(y, y1):
+#        if self.world.column_exists(a,b):                       # if the column of blocks at (a,b) is generated
+#          column_pos = self.world.get_column_pos(a,b)
+#
+#          for pos in column_pos:
+#            if not self.world.get_loaded(pos[0],pos[1],pos[2]): # don't draw if it is already loaded
+#              if count <= variables.renderer.blocks_drawn_per_frame:           # stop drawing if count is more than the max blocks drawn per frame
 
                 # load a block; to be drawn from now until cleared.
-                self.world_render.load_block(self.world.get_block(*pos), [pos[0], pos[1], pos[2]])
+#                self.world_render.load_block(self.world.get_block(*pos), [pos[0], pos[1], pos[2]])
 
                 # flag the block as currently loaded
-                self.world.set_loaded(pos[0],pos[1],pos[2],1)
-                self.loaded_blocks += 1                       # number of blocks currently loaded
-                count += 1                                    # number of blocks loaded this frame
+#                self.world.set_loaded(pos[0],pos[1],pos[2],1)
+#                self.loaded_blocks += 1                       # number of blocks currently loaded
+#                count += 1                                    # number of blocks loaded this frame
 
-        else:
+#        else:
           # generate the column if it isn't already
-          self.generator.request_column(a, b)
+#          self.generator.request_column(a, b)
 
     # unloads all blocks once max_blocks are rendered.
     # again only to fix a bug on my computer, everyone else comment this out.
@@ -193,6 +222,9 @@ class Game(pyglet.window.Window):
       self.set_exclusive_mouse(False)
       self.focus = False
       self.debug = True
+
+    elif symbol == pyglet.window.key.G:
+      self.render_columns(-100, -100, 100, 100)
 
 
   def on_draw(self):

@@ -24,11 +24,12 @@ class Generator():
 
   def request_column(self, x, y):
     self.queue.put((x, y))
+    if variables.generator.debug.print_requested_columns:
+      print("Requested column ({}, {})".format(x, y))
+
 
 
   def request_columns(self, x, y, x1, y1):
-    if variables.generator.debug.print_requested_columns:
-      print("Requested section ({}, {}) - ({}, {})".format(x, y, x1, y1))
     for a in range(x, x1):
       for b in range(y, y1):
         self.request_column(a, b)
@@ -74,6 +75,8 @@ class GeneratorThread(Thread):
   def run(self):
     while self.running:
       x, y = self.queue.get()
+      if variables.generator.debug.print_caught_columns:
+        print("Caught column {}, {}".format(x, y))
       if x is not None and y is not None:
         self.generate_column(x, y)
         self.queue.task_done()
