@@ -18,10 +18,13 @@ class Generator():
   def __init__(self,world):
     self.queue = Queue(variables.max_generation_requests)
     self.world = world
-    self.thread = GeneratorThread(self.world,self.queue)
-    self.thread.start()
+    self.threads = []
+    for i in range(variables.generator.threads):
+      t = GeneratorThread(self.world, self.queue)
+      t.start()
+      self.threads.append(t)
 
-
+# TODO make this only add a column if it hasn't been requested in the last so many seconds
   def request_column(self, x, y):
     self.queue.put((x, y))
     if variables.generator.debug.print_requested_columns:
@@ -36,13 +39,16 @@ class Generator():
 
 
   def stop(self):
-    self.thread.running = False
-    self.queue.put((None,None))
-    self.thread.join()
+    for t in self.threads:
+      t.running = False
+    for t in self.threads:
+      self.queue.put((None,None))
+    for t in self.threads:
+      t.join()
 
 
 class GeneratorThread(Thread):
-  def __init__(self,world,queue):
+  def __init__(self, world, queue):
     Thread.__init__(self)
     self.world = world
     self.queue = queue

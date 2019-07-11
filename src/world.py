@@ -1,7 +1,10 @@
 import pyglet
+from queue import Queue, Full
+from threading import Thread
 from pyglet.gl import *
 from math import ceil
 import variables
+import itertools
 
 
 class World:
@@ -118,8 +121,77 @@ class World:
 
 
 class WorldRender():
-  def __init__(self):
+  def __init__(self, world, generator):
+    self.world = world
+    self.generator = generator
     self.batch = pyglet.graphics.Batch()
+    self.render_queue = Queue(variables.render.max_render_requests)
+    self.requested_recently = []
+    self.pending_queue = Queue(variables.render.max_pending)
+    self.prepared = Queue(variables.render.max_rendered_requests)
+    self.thread = WorldRenderThread(self.world, self.generator, self.render_queue, self.pending_queue, self.prepared)
+    self.thread.start()
+    pyglet.clock.schedule_interval(self.clear_requested_recently, 1/2)
+
+  def clear_requested_recently(self, dt):
+    self.requested_recently = []
+
+  def request_columns(self, x1, y1, x2, y2):
+    for x, y in itertools.product(range(x1, x2), range(y1, y2)):
+      if (x, y) not in self.requested_recently:
+        try:
+          self.render_queue.put((x, y), timeout=0.5)
+          self.requested_recently.append((x, y))
+        except Full as e:
+          print(e)
+          print("Render queue was full, so didn't add requested columns.")
+          return
+    try:
+      self.render_queue.put(self.pending_queue.get(), timeout=0.5)
+      self.pending_queue.task_done()
+    except Full as e: pass
+
+
+  def stop(self):
+    self.thread.running = False
+    self.render_queue.put((None, None))
+    self.thread.join()
+
+
+  def unload_all(self):
+    self.batch = pyglet.graphics.Batch()
+
+
+  def draw(self):
+    drawn = 0
+
+    while not self.prepared.empty() and drawn < variables.render.max_drawn_per_frame:
+      self.batch.add_indexed(*self.prepared.get())
+      self.prepared.task_done()
+      drawn += 1
+
+    if variables.render.debug.print_render_requests:
+      print("Number of render requests: {}".format(self.render_queue.qsize()))
+    if variables.render.debug.print_pending_requests:
+      print("Number of pending requests: {}".format(self.pending_queue.qsize()))
+    if variables.render.debug.print_rendered_requests:
+      print("Number of rendered requests: {}".format(self.prepared.qsize()))
+
+    glPolygonMode(GL_FRONT_AND_BACK,GL_FILL)
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    self.batch.draw()
+
+
+class WorldRenderThread(Thread):
+  def __init__(self, world, generator, render_queue, pending_queue, prepared):
+    Thread.__init__(self)
+    self.world = world
+    self.generator = generator
+    self.queue = render_queue
+    self.prepared = prepared
+    self.pending = pending_queue
+    self.running = True
 
 
   def block_vertices(self, block, position):
@@ -164,18 +236,15 @@ class WorldRender():
     return variables.block_colour[variables.block[block.type]]
 
 
-  def unload_all(self):
-    self.batch = pyglet.graphics.Batch()
-
 
   def load_block(self, block, position):
     a = self.block_vertices(block, position)
     c = self.block_colour(block)
 
-    self.batch.add_indexed(24,GL_QUADS,None,
+    self.prepared.put((24, GL_QUADS, None,
       [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23],
       ("v3f",a),
-      ("c3B",c))
+      ("c3B",c)))
 
 
   def load_blocks(self, blocks, positions):
@@ -186,8 +255,34 @@ class WorldRender():
       self.load_block(blocks[i], position[i])
 
 
-  def draw(self):
-    glPolygonMode(GL_FRONT_AND_BACK,GL_FILL)
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    self.batch.draw()
+  def run(self):
+    while self.running:
+
+      if self.queue.empty() and not self.pending.empty():
+        try:
+          self.queue.put(self.pending.get(), timeout=0.1)
+        except Full as e:
+          print(e)
+        self.pending.task_done()
+
+      pos = self.queue.get()
+      if pos is (None, None):
+        return
+
+      if not self.world.column_exists(*pos):
+        self.generator.request_column(*pos)
+        #print("Requested column, trying again next time.")
+        try:
+          self.pending.put(pos, timeout=0.5)
+        except Full as e:
+          print(e)
+          print("Queue was full so I couldn't schedule this column to be checked later.")
+      else:
+        column_blocks = self.world.get_column_pos(*pos)
+        for column_block in column_blocks:
+          if not self.world.get_loaded(*column_block):
+            self.load_block(self.world.get_block(*column_block), column_block)
+
+            self.world.set_loaded(*column_block, 1)
+      self.queue.task_done()
+

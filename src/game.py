@@ -33,8 +33,8 @@ class Game(pyglet.window.Window):
     # setup game
     self.world = world.World()                       # the world
     self.player = player.PlayerManager(self.world)        # the player and/or perspective
-    self.world_render = world.WorldRender()          # draws the world
     self.generator = generator.Generator(self.world) # generates new chunks
+    self.world_render = world.WorldRender(self.world, self.generator)          # draws the world
 
     pyglet.clock.set_fps_limit(variables.maximum_framerate)      # set the maximum framerate
     pyglet.clock.schedule_interval(self.prevent_sleep, 1.0/60.0) # this prevents the application from 'smartly' sleeping when idle
@@ -54,8 +54,8 @@ class Game(pyglet.window.Window):
     self.debug = False     # whether to start the debugger next frame
 
     # render a reference block
-    b = block.Block(type="grass")              # create a block
-    self.world_render.load_block(b, [0, 0, 0]) # load and draw a block at 0,0,0
+    #b = block.Block(type="grass")              # create a block
+    #self.world_render.load_block(b, [0, 0, 0]) # load and draw a block at 0,0,0
 
 
   def quit(self):
@@ -63,6 +63,7 @@ class Game(pyglet.window.Window):
     called when the window is closed
     """
     self.generator.stop()
+    self.world_render.stop()
 
 
   def prevent_sleep(self,dt):
@@ -76,26 +77,24 @@ class Game(pyglet.window.Window):
   def render_columns(self, x, y, x1, y1):
     count = 0
     positions = list(itertools.product(range(x, x1), range(y, y1)))
-    while len(positions) > 0:
-      for a, b in positions:
-        if not self.world.column_exists(a,b):                       # if the column of blocks at (a,b) is generated
-          self.generator.request_column(a, b)
-          continue
+    for a, b in positions:
+      if not self.world.column_exists(a,b):                       # if the column of blocks at (a,b) is generated
+        self.generator.request_column(a, b)
+        continue
 
-        column_pos = self.world.get_column_pos(a,b)
+      column_pos = self.world.get_column_pos(a,b)
 
-        for pos in column_pos:
-          if not self.world.get_loaded(pos[0],pos[1],pos[2]): # don't draw if it is already loaded
-            if count <= variables.renderer.blocks_drawn_per_frame:           # stop drawing if count is more than the max blocks drawn per frame
+      for pos in column_pos:
+        if not self.world.get_loaded(pos[0],pos[1],pos[2]): # don't draw if it is already loaded
+          if variables.renderer.blocks_drawn_per_frame is None or count <= variables.renderer.blocks_drawn_per_frame:           # stop drawing if count is more than the max blocks drawn per frame
 
-              # load a block; to be drawn from now until cleared.
-              self.world_render.load_block(self.world.get_block(*pos), [pos[0], pos[1], pos[2]])
+            # load a block; to be drawn from now until cleared.
+            self.world_render.load_block(self.world.get_block(*pos), [pos[0], pos[1], pos[2]])
 
-              # flag the block as currently loaded
-              self.world.set_loaded(pos[0],pos[1],pos[2],1)
-              self.loaded_blocks += 1                       # number of blocks currently loaded
-              count += 1                                    # number of blocks loaded this frame
-        positions.remove((a, b))
+            # flag the block as currently loaded
+            self.world.set_loaded(pos[0],pos[1],pos[2],1)
+            self.loaded_blocks += 1                       # number of blocks currently loaded
+            count += 1                                    # number of blocks loaded this frame
 
 
 
@@ -116,7 +115,7 @@ class Game(pyglet.window.Window):
 
     #count = 0                               # keeps track of how many blocks were drawn this frame
     visible = self.player.get_visible()   # the square that should be visible to the player
-    self.render_columns(*visible)
+    self.world_render.request_columns(*visible)
 #    for a in range(x, x1):
 #      for b in range(y, y1):
 #        if self.world.column_exists(a,b):                       # if the column of blocks at (a,b) is generated
@@ -224,7 +223,10 @@ class Game(pyglet.window.Window):
       self.debug = True
 
     elif symbol == pyglet.window.key.G:
-      self.render_columns(-100, -100, 100, 100)
+      if variables.generate_distance <= 15:
+        variables.generate_distance = 100
+      else:
+        variables.generate_distance = 15
 
 
   def on_draw(self):

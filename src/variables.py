@@ -6,7 +6,7 @@ from random import randint
 window_width            = 1280
 window_height           = 1024
 maximum_framerate       = 256
-max_generation_requests = 100_000
+max_generation_requests = 1_000
 vsync                   = True
 
 class player:
@@ -15,7 +15,7 @@ class player:
     height = 2
     class debug:
         # Whether to print the players position on player move
-        print_player_position = True
+        print_player_position = False
 
         # Whether to print the players heading on change
         print_player_heading = False
@@ -24,8 +24,16 @@ class world:
     # Creates a grass block at the player's start position
     create_reference_block = True
 
-class renderer:
-    blocks_drawn_per_frame = 1000
+class render:
+    blocks_drawn_per_frame = None
+    max_render_requests = 1_000
+    max_pending = 1_000
+    max_drawn_per_frame = 1_000
+    max_rendered_requests = 1_000
+    class debug:
+        print_render_requests = True
+        print_pending_requests = True
+        print_rendered_requests = True
 
 cube_size         = 10
 field_of_view     = 65.0
@@ -41,8 +49,7 @@ physics_updates   = 1/30.0
 
 # terrain height generation
 class generator:
-    # Whether to generate a large area around the player when starting
-    generate_reference_area = True
+    threads = 4
 
     reference_area = [-50, -50, 50, 50]
     seed = 1123
@@ -60,8 +67,8 @@ class generator:
     repeaty = 1024.0
     base = z_min
     class debug:
-        print_requested_columns = True
-        print_caught_columns = True
+        print_requested_columns = False
+        print_caught_columns = False
 
 class debug:
     print_move_speed = True
