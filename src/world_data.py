@@ -256,11 +256,11 @@ class WorldDataServer(mp.Process):
 
 class TestWorldDataServer(unittest.TestCase):
     def setUp(self):
-        l = logging.getLogger("Testing")
+        l = logging.getLogger("TestWorldDataServer")
         #h = logging.StreamHandler()
-        fh = logging.FileHandler(config.WorldDataServer.TestingLog)
+        fh = logging.FileHandler(config.TestingLog)
         #f = logging.Formatter('%(filename)s:%(funcName)s[%(lineno)s] %(message)s')
-        ff = logging.Formatter('%(processName)-20s:%(filename)-20s:%(funcName)-20s[%(lineno)-3s] %(levelname)-8s %(message)s')
+        ff = logging.Formatter(config.LogFormat)
         fh.setFormatter(ff)
         #h.setFormatter(f)
         l.addHandler(fh)
