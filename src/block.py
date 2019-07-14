@@ -1,9 +1,24 @@
-class Block():
-  def __init__(self,position=[None,None,None],type=None):
-    self.position = position
-    self.type = type
-    self.loaded = False
+import config, unittest
 
+
+class Block():
+  def __init__(self, block_type=None):
+    if not isinstance(block_type, config.BlockType):
+      raise ValueError("Invalid block type {}".format(block_type))
+    self.block_type = block_type
 
   def __str__(self):
-    return str(self.position[0])+","+str(self.position[1])+","+str(self.position[2])+",type:"+str(self.type)
+    return str("A block of type {}".format(self.block_type))
+
+  def __eq__(self, other):
+    if not isinstance(other, Block): return False
+    return self.block_type == other.block_type
+
+
+class TestBlock(unittest.TestCase):
+  def test_equals(self):
+    a = Block(config.BlockType.Grass)
+    b = Block(config.BlockType.Empty)
+    self.assertNotEqual(a, b)
+    b = Block(config.BlockType.Grass)
+    self.assertEqual(a, b)

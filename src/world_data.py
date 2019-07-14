@@ -1,68 +1,169 @@
-import logging, random, unittest
+import logging, random, unittest, string, itertools
 import multiprocessing as mp
 from collections import defaultdict
+from chunk import Chunk
+from block import Block
 import config
 
 
 class WorldDataClient:
+    """An object that connects to the WorldDataServer. Each seperate thread or process requires a seperate instance of this, Not a copy of it. You must use .new_client from the main client to create new instances."""
     def __init__(self, name, pipe, parent_log):
+        """Shouldn't be created unless inside WorldDataServer.
+        name:  The name of the client (like WorldGenerator, or WorldRenderer)
+        pipe:  A pipe connected to the server.
+        parent_log: The log of the process that will be using this client."""
+
         self.name = name
         self.pipe = pipe
         try:
             self.log = parent_log.getChild("WorldDataClient")
         except AttributeError as e:
-            raise Exception("Invalid parent logger")
+            raise Exception("Invalid parent logger", e)
+        #TODO add some performance metrics tracking the number of requests sent in a minute and time waiting for responses.
 
 
-    def send_request(self, cmd, **data):
+    def __send_request__(self, cmd, data=None):
+        """Sends requests to the server as well as logging what is sent and received. WAITS until something is received from the server!
+        cmd:  An instance of config.WorldRequests that specifies the request type.
+        data: A dictionary of config.WorldRequestData keys that contains the data for the request.
+        returns the response from the server in the form (instance of config.WorldRequests, dict of config.WorldRequestData keys)"""
+
         req = (cmd, data)
+        self.log.debug("Sending request: {}".format(req))
         self.pipe.send(req)
-        return self.pipe.recv()
+
+        res = self.pipe.recv()
+        self.log.debug("Server replied to request: {}".format(res))
+
+        return res
+
+
+    def __handle_fail__(self, req):
+        """Handles detecting and logging if the server returns an error. Returns True if there was an error, False otherwise."""
+        if req[0] in (config.WorldRequests.FailedReq, config.WorldRequests.InvalidReq):
+            self.log.warning("Request failed: {}".format(req[0]))
+            self.log.debug("Failed request data: {}".format(req[1]))
+            return True
+        return False
 
 
     def ping(self):
-        res = self.send_request(config.WorldRequests.PingReq)
-        self.log.info("Server replied to request: {}".format(res[1]))
+        """Just a ping to check the server is still connected.
+        Returns {config.WorldRequestData.Pong: 'pong'} if successful, else returns None."""
+        req = config.WorldRequests.PingReq
+        res = self.__send_request__(req)
+        if self.__handle_fail__(res): return None
+        else: return res[1]
 
+
+    def new_client(self, name=None):
+        """Requests the server to create another WorldDataClient object that is connected to the server. Will wait until the server responds with a new connected client.
+        Returns {config.WorldRequestData.NewClient: WorldDataClient()} if successful, else returns None."""
+        req = config.WorldRequests.NewClientReq
+        req_data = {'name': name}
+        res = self.__send_request__(req, req_data)
+        if self.__handle_fail__(res): return None
+        else: return res[1]
+
+
+    def set_chunk(self, cx, cy, chunk):
+        """Requests that the server set the chunk data for chunk position (cx, cy) to chunk. Will wait until the server responds with a success or failure.
+        cx: x position of the chunk to set.
+        cy: y position of the chunk to set.
+        chunk: A Chunk object to put at the specified location.
+        Returns False if successful, else returns True."""
+        req = config.WorldRequests.SetChunkReq
+        req_data = {config.WorldRequestData.ChunkPos: (cx, cy), config.WorldRequestData.ChunkData: chunk}
+        res = self.__send_request__(req, req_data)
+        return res[1]
+        return self.__handle_fail__(res)
+
+
+    def get_chunk(self, cx, cy):
+        """Returns a Chunk object for the requested location. Will wait until the server responds with the chunk.
+        cx: x position of the chunk to set.
+        cy: y position of the chunk to set.
+        Returns {config.WorldRequestData.ChunkData: Chunk()} if successful, else returns None"""
+        req = config.WorldRequests.GetChunkReq
+        req_data = {config.WorldRequestData.ChunkPos: (cx, cy)}
+        res = self.__send_request__(req, req_data)
+        return res[1]
+        if self.__handle_fail__(res): return None
+        else: return res[1]
 
 
 class WorldDataServer(mp.Process):
-    """A world data request takes the form of a tuple, (command, data_dict)"""
-    def __init__(self, parent_log, log_level=logging.INFO):
+    """A server in a seperate process that handles all access to the world data. This class could be used to cache different sections of the world or to load between the filesystem and RAM. Currently it just stores the entire world in RAM using a dictionary of Chunk objects."""
+    def __init__(self, parent_log):
+        """parent_log: The logging.getLogger() object that will be the parent for this log."""
         super(WorldDataServer, self).__init__()
 
         self.__running__ = mp.Value('b', True)
         self.__main_pipe_pub__, self.__main_pipe__ = mp.Pipe(True)
-        self.__world_data__ = defaultdict(lambda: Chunk())
+        self.__chunks__ = defaultdict(lambda: Chunk())
         self.__connections__ = {self.__main_pipe__: config.WorldDataServer.MainConnectionName,}
         self.parent_log = parent_log
 
-        self.log = logging.getLogger('WorldDataServer')
+        #self.log = logging.getLogger('WorldDataServer')
+        self.log = parent_log.getChild('WorldDataServer')
 
-        self.__handler__ = logging.StreamHandler()
-        self.__formatter__ = logging.Formatter('%(asctime)s %(processName)-6s %(filename)s:%(funcName)s[%(lineno)s] %(levelname)-8s %(message)s')
-        self.__handler__.setFormatter(self.__formatter__)
-        self.log.addHandler(self.__handler__)
-        self.log.setLevel(log_level)
+        #self.__handler__ = logging.StreamHandler()
+
+        # DON'T DELETE ME. This is the format I want for the main log.
+        #self.__formatter__ = logging.Formatter('%(asctime)s %(processName)-6s %(filename)s:%(funcName)s[%(lineno)s] %(levelname)-8s %(message)s')
+
+        #self.__handler__.setFormatter(self.__formatter__)
+        #self.log.addHandler(self.__handler__)
+        #self.log.setLevel(log_level)
+        self.log.info("WorldDataServer is ready.")
+
+
+    def start(self, *args, **kwargs):
+        """Start the server and log that it has started."""
+        super(WorldDataServer, self).start(*args, **kwargs)
+        self.log.info("WorldDataServer is started.")
+
+
+    def set_chunk(self, cx, cy, chunk):
+        """Change the chunk data at a specified location."""
+        if not isinstance(chunk, Chunk):
+            raise TypeError("Must be Chunk, not {}".format(type(chunk)))
+        self.__chunks__[(cx, cy)] = chunk
+
+
+    def get_chunk(self, cx, cy):
+        """Get the chunk data at a specified location"""
+        return self.__chunks__[(cx, cy)]
 
 
     def get_main_client(self):
+        """Return the main client to the starting process."""
         return WorldDataClient(config.WorldDataServer.MainConnectionName, self.__main_pipe_pub__, self.parent_log)
 
 
     def random_cli_id(self):
+        """Create a random client ID for new_client if a name isn't specified."""
         letters = string.ascii_lowercase
         id = ''.join(random.choice(letters) for i in range(config.WorldDataServer.RandomIDLength))
         return id
 
 
     def new_client(self, parent_log, name=None):
+        """Creates a new WorldDataClient that is connected to this server.
+        parent_log: The logging.getLogger() object of the process that is going to use this client.
+        name: Something useful to identify the client in the logs (like WorldGenerator or WorldRenderer)
+        Returns the new client"""
         if name is None:
-            name = self.random_cli_id
+            name = self.random_cli_id()
+        if name in self.__connections__.values():
+            new_name = name + self.random_cli_id()
+            self.log.info("Client ID '{}' already connected. Changing to '{}'".format(name, new_name))
+            name = new_name
 
-        __new_pipe__, new_pipe = mp.Pipe(duplex)
+        __new_pipe__, new_pipe = mp.Pipe(True)
         self.__connections__[__new_pipe__] = name
-        new_cli = WorldDataClient(name, pipe, parent_log)
+        new_cli = WorldDataClient(name, new_pipe, parent_log)
 
         self.log.info("Created a new client '{}'".format(name))
 
@@ -70,42 +171,78 @@ class WorldDataServer(mp.Process):
 
 
     def handle_request(self, cli, req):
+        """Figures out what was requested, does it, and responds to the client.
+        cli: The pipe object that is in self.__connections__ to communicate with the client/
+        req: The request received from the client in the form (instance of config.WorldRequests, dict of config.WorldRequestData keys)"""
         cli_name = self.__connections__[cli]
+        response = [None, None] # [responding_to_request, response_data]
 
-        if req[0] not in config.WorldRequests:
+        if not isinstance(req[0], config.WorldRequests):
             self.log.warning("Invalid request from client '{}'".format(cli_name, req[0]))
             self.log.debug("Invalid request contents: {}".format(req))
-            return
+            response[0] = config.WorldRequests.InvalidReq
 
-        # Switch statement for all supported commands.
-        response = [None, None] # [responding_to_request, response_data]
-        if req[0] == config.WorldRequests.PingReq:
+        elif req[0] is config.WorldRequests.PingReq:
             self.log.info("Received Ping request from client '{}'".format(cli_name))
             response[0] = req[0]
             response[1] = {config.WorldRequestData.Pong: 'pong'}
 
         elif req[0] == config.WorldRequests.NewClientReq:
             self.log.info("Received New Client request from client '{}'".format(cli_name))
-            if req[1] is not None:
-                name = req[1][config.WorldRequestData.NewClienName]
+            if req[1] is not None and config.WorldRequestData.NewClientName in req[1]:
+                name = req[1][config.WorldRequestData.NewClientName]
             else:
                 name = None
-            new_cli = self.new_cli(name=name)
-            response[0] = config.WorldRequests.NewClientReq
-            response[1] = {config.WorldRequestData.NewClient: new_cli}
+            try:
+                new_cli = self.new_client(self.parent_log, name=name)
+                response[0] = req[0]
+                response[1] = {config.WorldRequestData.NewClient: new_cli}
+            except Exception as e:
+                self.log.warning("Failed to get new client.")
+                self.log.debug(e)
+                response[0] = config.WorldRequests.FailedReq
+
+        elif req[0] == config.WorldRequests.SetChunkReq:
+            self.log.info("Received Set Chunk request from client '{}'".format(cli_name))
+
+            cx, cy = req[1][config.WorldRequestData.ChunkPos]
+            chunk_data = req[1][config.WorldRequestData.ChunkData]
+
+            try:
+                self.set_chunk(cx, cy, chunk_data)
+                response[0] = req[0]
+            except Exception as e:
+                self.log.warning("Failed to set chunk data.")
+                self.log.debug(e)
+                response[0] = config.WorldRequests.FailedReq
+
+        elif req[0] == config.WorldRequests.GetChunkReq:
+            self.log.info("Receiuved Get Chunk request from client '{}'".format(cli_name))
+
+            cx, cy = req[1][config.WorldRequestData.ChunkPos]
+
+            try:
+                chunk = self.get_chunk(cx, cy)
+                response[0] = req[0]
+                response[1] = {config.WorldRequestData.ChunkData: chunk}
+            except Exception as e:
+                self.log.warning("Failed to get chunk data.")
+                self.log.debug(e)
+                response[0] = config.WorldRequests.FailedReq
 
         self.log.debug("Replying with: {}".format(response))
         cli.send(tuple(response))
 
 
     def run(self):
+        """The main loop for the WorldDataServer. It waits for messages from clients, then passes the requests to handle_requests. Since this is not multithreaded or multiprocessed all world modifications happen syncronously."""
         while self.__running__.value:
             ready = mp.connection.wait(self.__connections__.keys(), timeout=config.WorldDataServer.ConnectionWaitTime)
             for cli in ready:
                 name = self.__connections__[cli]
                 try:
                     req = cli.recv()
-                except EOFError as e:
+                except EOFError:
                     if name == config.WorldDataServer.MainConnectionName:
                         self.log.info("WorldDataServer: Main connection closed, exiting.")
                         self.running = False
@@ -120,10 +257,14 @@ class WorldDataServer(mp.Process):
 class TestWorldDataServer(unittest.TestCase):
     def setUp(self):
         l = logging.getLogger("Testing")
-        h = logging.StreamHandler()
-        f = logging.Formatter('%(processName)-20s:%(filename)s:%(funcName)s[%(lineno)s] %(levelname)-8s %(message)s')
-        h.setFormatter(f)
-        l.addHandler(h)
+        #h = logging.StreamHandler()
+        fh = logging.FileHandler(config.WorldDataServer.TestingLog)
+        #f = logging.Formatter('%(filename)s:%(funcName)s[%(lineno)s] %(message)s')
+        ff = logging.Formatter('%(processName)-20s:%(filename)-20s:%(funcName)-20s[%(lineno)-3s] %(levelname)-8s %(message)s')
+        fh.setFormatter(ff)
+        #h.setFormatter(f)
+        l.addHandler(fh)
+        #l.addHandler(h)
         l.setLevel(logging.DEBUG)
         self.log = l
 
@@ -131,11 +272,32 @@ class TestWorldDataServer(unittest.TestCase):
         self.world_client = self.world_server.get_main_client()
         self.world_server.start()
 
-
     def tearDown(self):
         self.world_server.__running__.value = False
-        print("Closing world server")
         self.world_server.join()
 
     def test_ping(self):
-        self.world_client.ping()
+        res = self.world_client.ping()
+        self.assertIn(config.WorldRequestData.Pong, res)
+
+    def test_new_client(self):
+        cli = self.world_client.new_client()
+        self.assertIsNotNone(cli[config.WorldRequestData.NewClient])
+        cli = cli[config.WorldRequestData.NewClient]
+        res = cli.ping()
+        self.assertIn(config.WorldRequestData.Pong, res)
+
+    def test_setget_chunk(self):
+        # Create a chunk with a non-default blocks
+        chunk = Chunk()
+        block = Block(config.BlockType.Grass)
+        chunk.set_block(0, 0, 0, block)
+
+        # Ensure that the block the server sets the chunk without error.
+        res = self.world_client.set_chunk(0, 0, chunk)
+        self.assertFalse(res)
+
+        # Ensure the chunk it gives back to us is the same one we but in.
+        res = self.world_client.get_chunk(0, 0)[config.WorldRequestData.ChunkData]
+        self.assertIsNotNone(res, "get_chunk failed")
+        self.assertEqual(chunk, res)
