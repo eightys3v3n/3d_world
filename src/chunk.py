@@ -27,6 +27,7 @@ class Chunk:
 
 
     def __iter__(self):
+        """Using `for p, b in Chunk()` will result in p being the position of a given chunk, and b being the block object for that position."""
         for pos, block in self.__blocks__.items():
             yield (pos, block)
 
