@@ -26,6 +26,11 @@ class Chunk:
         return "Chunk: {}".format(h)
 
 
+    def __iter__(self):
+        for pos, block in self.__blocks__.items():
+            yield (pos, block)
+
+
     @classmethod
     def __check_position__(cls, bx, by, bz):
         if not 0 <= bx < config.WorldDataServer.ChunkSize:
@@ -50,6 +55,15 @@ class Chunk:
 
 
 class TestChunk(unittest.TestCase):
+    def test_iterable(self):
+        chunk = Chunk()
+        chunk.set_block(0, 0, 0, Block(config.BlockType.Grass))
+        chunk.set_block(0, 1, 0, Block(config.BlockType.Grass))
+        for p, b in chunk:
+            self.assertIn(p, ((0, 0, 0), (0, 1, 0)))
+            self.assertIsInstance(b, Block)
+            self.assertEqual(b, Block(config.BlockType.Grass))
+
     def test_check_position(self):
         with self.assertRaises(ValueError):
             Chunk.__check_position__(-1, 0, 0)
