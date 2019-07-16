@@ -1,8 +1,27 @@
 from pyglet.gl import *
 from math import cos,hypot,degrees,radians,sin,atan2
 import variables, utils
-import math
 from variables import window_height, window_width, cube_size
+
+
+def legacy_get_abs_block_pos(player_pos):
+  x = -player_pos[0]/config.World.VoxelSize/2
+  y = -player_pos[1]/config.World.VoxelSize/2
+  z = position[2]/config.World.VoxelSize/2
+  x = round(x)
+  y = round(y)
+  z = round(z)
+  return (x, y, z)
+
+
+def legacy_get_top_block_height(world_client, abx, aby):
+  """Returns the height of the top most block at the given absolute block position in the world."""
+  (cx, cy), (bx, by) = WorldDataClient.abs_block_to_chunk_block(abx, aby)
+  chunk = world_client.get_chunk(cx, cy)
+  column = chunk.get_column(bx, by)
+  column = list(column.items())
+  column.sort(reverse=True)
+  return column[0][2]
 
 
 class Player:
@@ -155,12 +174,12 @@ class PlayerManager():
     """
     suppose to make the player fall to the ground if they aren't flying
     """
-    self.set_standing_on(self.world.get_block_pos_at(self.player.position))
+    self.set_standing_on(self.world.get_abs_block_pos(self.player.position))
 
     if not self._flying:
       # get the highest block in the x,z that the player is in.
       # should actually be 'get the highest block below the player'
-      top_block_height = self.world.get_top_block_height(self.player.position[0], self.player.position[1])
+      top_block_height = legacy_get_top_block_height(self.world_client, *self.standing_on())
 
       if top_block_height != None:                          # if there is a block in x, z
         if self.standing_on()[2] > top_block_height+self.player.height:    # if the player is above the top block

@@ -1,4 +1,4 @@
-import config, unittest
+import config, unittest, itertools
 from collections import defaultdict
 from block import Block
 from hashlib import sha3_512
@@ -10,7 +10,8 @@ def default_block():
 
 class Chunk:
     def __init__(self):
-        self.__blocks__ = defaultdict(default_block)
+        self.__blocks__ = defaultdict(default_block) # {(x, y, z): Block()}
+        self.__generated__ = False
 
 
     def __eq__(self, other):
@@ -49,10 +50,26 @@ class Chunk:
 
 
     def set_block(self, x, y, z, block):
+        if not self.__generated__:
+            self.__generated__ = True
+
         Chunk.__check_position__(x, y, z)
         if not isinstance(block, Block):
             raise TypeError("Must be a Block object")
         self.__blocks__[(x, y, z)] = block
+
+
+    def get_column(self, bx, by):
+        column = {}
+        for (bx1, by1, bz1), b in self:
+            if (bx, by) == (bx1, by1):
+                column[(bx1, by1, bz1)] = b
+        return column
+
+
+    def is_generated(self):
+        return self.__generated__
+
 
 
 class TestChunk(unittest.TestCase):
@@ -115,3 +132,27 @@ class TestChunk(unittest.TestCase):
         self.assertEqual(block, res)
         res= chunk.get_block(1, 1, 1)
         self.assertNotEqual(block, res)
+
+
+    def test_get_column(self):
+        orig = config.WorldDataServer.WorldHeight
+        config.WorldDataServer.WorldHeight = 3
+
+        try:
+            chunk = Chunk()
+            r = range(0, config.WorldDataServer.WorldHeight)
+            for (x, y, z) in itertools.product(r, r, r):
+                chunk.set_block(x, y, z, Block(config.BlockType.Grass))
+                column = chunk.get_column(0, 0)
+
+            self.assertEqual(len(column.keys()), config.WorldDataServer.WorldHeight, column.__str__())
+            corr = {
+                (0, 0, 0): Block(config.BlockType.Grass),
+                (0, 0, 1): Block(config.BlockType.Grass),
+                (0, 0, 2): Block(config.BlockType.Grass),
+            }
+            self.assertEqual(column, corr)
+        finally:
+            config.WorldDataServer.WorldHeight = orig
+
+

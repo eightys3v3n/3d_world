@@ -19,14 +19,22 @@ class Player:
     MaxFallSpeed = 30
 
 
-class Generator:
-    Distance = 1 # chunks
+class WorldGenerator:
+    Distance = 4 # chunks
+    Processes = 2 # Number of processes generating chunks in parallel.
+    RequestQueueSize = 256 # Number of chunks that can be requested before old requests are removed.
+    RecentlyRequested = 10 # Number of seconds to store recently requested chunks. This is used to avoid two GenerationSlaves generating the same chunk more than once.
+    GarbageCollectionInterval = 1.0 # Once every how many seconds should we clear out the recently requested chunk list.
+    MaxRecentChunksStored = 1024 # How many chunks should be stored if the list isn't being cleared quick enough?
+
+
+class World:
+    VoxelSize = 16
 
 
 class WorldRenderer:
     MaxQueuedChunks = 256
     RendererWaitTime = 1 # Specifies how long, in seconds, the renderer should wait for requests before checking if it should exit.
-    BlockSize = 16
 
 
 class WorldDataServer:
@@ -47,6 +55,8 @@ class WorldRequests(Enum):
     NewClientReq = 'new_client'
     SetChunkReq = 'set_chunk'
     GetChunkReq = 'get_chunk'
+    InitChunkReq = 'init_chunk'
+    DuplicateInit = 'dupe_init_chunk'
 
 @unique
 class WorldRequestData(Enum):

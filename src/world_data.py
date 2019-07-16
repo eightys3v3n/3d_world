@@ -41,7 +41,7 @@ class WorldDataClient:
 
     def __handle_fail__(self, req):
         """Handles detecting and logging if the server returns an error. Returns True if there was an error, False otherwise."""
-        if req[0] in (config.WorldRequests.FailedReq, config.WorldRequests.InvalidReq):
+        if req[0] in (config.WorldRequests.FailedReq, config.WorldRequests.InvalidReq, config.WorldRequests.DuplicateInit):
             self.log.warning("Request failed: {}".format(req[0]))
             self.log.debug("Failed request data: {}".format(req[1]))
             return True
@@ -68,7 +68,7 @@ class WorldDataClient:
 
 
     def set_chunk(self, cx, cy, chunk):
-        """Requests that the server set the chunk data for chunk position (cx, cy) to chunk. Will wait until the server responds with a success or failure.
+        """Requests that the server set the chunk data for chunk position (cx, cy). Will wait until the server responds with a success or failure.
         cx: x position of the chunk to set.
         cy: y position of the chunk to set.
         chunk: A Chunk object to put at the specified location.
@@ -76,7 +76,18 @@ class WorldDataClient:
         req = config.WorldRequests.SetChunkReq
         req_data = {config.WorldRequestData.ChunkPos: (cx, cy), config.WorldRequestData.ChunkData: chunk}
         res = self.__send_request__(req, req_data)
-        return res[1]
+        return self.__handle_fail__(res)
+
+
+    def init_chunk(self, cx, cy, chunk):
+        """Requests that the server set the chunk data for chunk position (cx, cy) ONLY if the chunk was previously ungenerated. Will wait until the server responds with a success or failure.
+        cx: x position of the chunk to set.
+        cy: y position of the chunk to set.
+        chunk: A Chunk object to put at the specified location.
+        Returns False if successful and chunk was ungenerated, else returns True."""
+        req = config.WorldRequests.InitChunkReq
+        req_data = {config.WorldRequestData.ChunkPos: (cx, cy), config.WorldRequestData.ChunkData: chunk}
+        res = self.__send_request__(req, req_data)
         return self.__handle_fail__(res)
 
 
@@ -88,9 +99,23 @@ class WorldDataClient:
         req = config.WorldRequests.GetChunkReq
         req_data = {config.WorldRequestData.ChunkPos: (cx, cy)}
         res = self.__send_request__(req, req_data)
-        return res[1]
         if self.__handle_fail__(res): return None
         else: return res[1]
+
+
+    def is_generated(self, cx, cy):
+        """Returns True if the chunk has already been generated, False otherwise."""
+        chunk = self.get_chunk(cx, cy)
+        return chunk.is_generated()
+
+
+    @classmethod
+    def abs_block_to_chunk_block(cls, abx, aby):
+        cx = int(abx / config.World.VoxelSize)
+        bx = abx - (cx * config.World.VoxelSize)
+        cy = int(aby / config.World.VoxelSize)
+        by = aby - (cy * config.World.VoxelSize)
+        return ((cx, cy), (bx, by))
 
 
 class WorldDataServer(mp.Process):
@@ -123,6 +148,12 @@ class WorldDataServer(mp.Process):
         """Start the server and log that it has started."""
         super(WorldDataServer, self).start(*args, **kwargs)
         self.log.info("WorldDataServer is started.")
+
+
+    def stop(self, *args, **kwargs):
+        self.log.info("WorldDataServer is stopping.")
+        self.__running__.value = False
+
 
 
     def set_chunk(self, cx, cy, chunk):
@@ -230,6 +261,25 @@ class WorldDataServer(mp.Process):
                 self.log.debug(e)
                 response[0] = config.WorldRequests.FailedReq
 
+        elif req[0] == config.WorldRequests.InitChunkReq:
+            self.log.info("Received Init Chunk request from client '{}'".format(cli_name))
+
+            cx, cy = req[1][config.WorldRequestData.ChunkPos]
+            if not self.get_chunk(cx, cy).is_generated():
+                chunk_data = req[1][config.WorldRequestData.ChunkData]
+
+                try:
+                    self.set_chunk(cx, cy, chunk_data)
+                    response[0] = req[0]
+                except Exception as e:
+                    self.log.warning("Failed to set chunk data.")
+                    self.log.debug(e)
+                    response[0] = config.WorldRequests.FailedReq
+            else:
+                self.log.warning("A chunk was initialized twice")
+                self.log.debug("Chunk: ({}, {})".format(cx, cy))
+                response[0] = config.WorldRequests.DuplicateInit
+
         self.log.debug("Replying with: {}".format(response))
         cli.send(tuple(response))
 
@@ -273,7 +323,7 @@ class TestWorldDataServer(unittest.TestCase):
         self.world_server.start()
 
     def tearDown(self):
-        self.world_server.__running__.value = False
+        self.world_server.stop()
         self.world_server.join()
 
     def test_ping(self):
@@ -290,8 +340,7 @@ class TestWorldDataServer(unittest.TestCase):
     def test_setget_chunk(self):
         # Create a chunk with a non-default blocks
         chunk = Chunk()
-        block = Block(config.BlockType.Grass)
-        chunk.set_block(0, 0, 0, block)
+        chunk.set_block(0, 0, 0, Block(config.BlockType.Grass))
 
         # Ensure that the block the server sets the chunk without error.
         res = self.world_client.set_chunk(0, 0, chunk)
@@ -301,3 +350,27 @@ class TestWorldDataServer(unittest.TestCase):
         res = self.world_client.get_chunk(0, 0)[config.WorldRequestData.ChunkData]
         self.assertIsNotNone(res, "get_chunk failed")
         self.assertEqual(chunk, res)
+
+    def test_init_chunk(self):
+        chunk = Chunk()
+        chunk.set_block(0, 0, 0, Block(config.BlockType.Grass))
+        res = self.world_client.init_chunk(0, 0, chunk)
+        self.assertFalse(res)
+
+        res = self.world_client.init_chunk(0, 0, chunk)
+        self.assertTrue(res)
+
+
+class TestWorldDataClient(unittest.TestCase):
+    def test_abs_block_to_chunk_block(self):
+        self.assertEqual(config.World.VoxelSize, 16, "This test needs to be reworked if the block size changes")
+        self.assertEqual(WorldDataClient.abs_block_to_chunk_block(0, 0),
+                         ((0, 0), (0, 0)))
+        self.assertEqual(WorldDataClient.abs_block_to_chunk_block(1, 1),
+                         ((0, 0), (1, 1)))
+        self.assertEqual(WorldDataClient.abs_block_to_chunk_block(15, 15),
+                         ((0, 0), (15, 15)))
+        self.assertEqual(WorldDataClient.abs_block_to_chunk_block(16, 16),
+                         ((1, 1), (0, 0)))
+        self.assertEqual(WorldDataClient.abs_block_to_chunk_block(17, 17),
+                         ((1, 1), (1, 1)))

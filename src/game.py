@@ -20,8 +20,19 @@ class Game(pyglet.window.Window):
   a class that contains the window, world, world rendering, player, event handling, generation
   """
   def __init__(self):
+    self.log = logging.getLogger()
+    h = logging.ConsoleHandler()
+    fh = logging.FileHandler(config.LogFile)
+    f = logging.Formatter(config.LogFormat)
+    ff = logging.Formatter(config.LogFormat)
+    h.setFormatter(f)
+    fh.setFormatter(ff)
+    self.log.addHandler(h)
+    self.log.addHandler(fh)
+    self.log.setLevel(logging.WARNING)
+
     # setup the window
-    super(Game,self).__init__()                      # initialize the window
+    super(Game, self).__init__()                      # initialize the window
     self.set_size(window_width, window_height)       # set the window size
     self.set_exclusive_mouse(False)                  # lock the cursor to this window
     self.set_vsync(variables.vsync)                  # turn off vsync so the framerate isn't limited at your refresh rate
@@ -31,10 +42,14 @@ class Game(pyglet.window.Window):
     self.push_handlers(self.keys)                    # tells pyglet that it should keep track of when keys are pressed
 
     # setup game
-    self.world = world.World()                       # the world
-    self.player = player.PlayerManager(self.world)        # the player and/or perspective
-    self.generator = generator.Generator(self.world) # generates new chunks
-    self.world_render = world.WorldRender(self.world, self.generator)          # draws the world
+    self.world_server = world_data.WorldDataServer(self.logging)                       # the world
+    self.world_client = self.world_server.get_main_client()
+    generator_world_client = self.world_client.new_client("World Generator")[config.WorldRequestData.NewClient]
+    renderer_world_client = self.world_client.new_client("World Renderer")[config.WorldRequestData.NewClient]
+
+    self.player = player.PlayerManager(self.world_client)        # the player and/or perspective
+    self.generator = generator.Generator(generator_world_client) # generates new chunks
+    self.world_render = world.WorldRender(renderer_world_client)          # draws the world
 
     pyglet.clock.set_fps_limit(variables.maximum_framerate)      # set the maximum framerate
     pyglet.clock.schedule_interval(self.prevent_sleep, 1.0/60.0) # this prevents the application from 'smartly' sleeping when idle
@@ -63,6 +78,7 @@ class Game(pyglet.window.Window):
     called when the window is closed
     """
     self.generator.stop()
+    self.world_server.stop()
     self.world_render.stop()
 
 
@@ -141,9 +157,11 @@ class Game(pyglet.window.Window):
     # again only to fix a bug on my computer, everyone else comment this out.
     if variables.debug.max_blocks is not None and self.loaded_blocks >= variables.debug.max_blocks:
       print("unloading all loaded blocks to avoid graphics glitch on my pc")
-      self.world_render.unload_all()
-      self.world.unload_all()
-      self.loaded_blocks = 0
+      raise NotImplemented()
+      # This feature was removed with the new world renderer
+      #self.world_render.unload_all()
+      #self.world.unload_all()
+      #self.loaded_blocks = 0
     #self.world_render.load_blocks(blocks)
 
 

@@ -4,13 +4,26 @@ import queue, pyglet, time, unittest, logging
 import config, world_data
 
 
-class WorldRenderer:
+class WorldRenderer(mp.Process):
     def __init__(self, world_client, parent_log):
+        super(WorldRenderer, self).__init__()
         self.parent_log = parent_log
+        self.log = self.parent_log.getChild("WorldRenderer")
         self.world_client = world_client
         self.chunks_to_render = queue.Queue(config.WorldRenderer.MaxQueuedChunks)
         self.rendered_chunks = []
         self.__running__ = mp.Value('b', True) # Carry over because I planned to make this a seperate process.
+
+
+    #def start(self, *args, **kwargs):
+        """Start the server and log that it has started."""
+        #super(WorldRenderer, self).start(*args, **kwargs)
+        #self.log.info("WorldRenderer is started.")
+
+
+    #def stop(self, *args, **kwargs):
+        #self.log.info("WorldRenderer is stopping.")
+        #self.__running__.value = False
 
 
     def chunk_is_rendered(self, x, y):
@@ -20,9 +33,10 @@ class WorldRenderer:
         return False
 
 
-    def request_chunk(self, x, y):
-        if not self.chunk_is_rendered(x, y):
-            self.chunks_to_render.put((x, y))
+    def request_chunk(self, cx, cy):
+        if not self.chunk_is_rendered(cx, cy):
+            self.log.info("Requesting chunk to be rendered ({}, {})".format(cx, cy))
+            self.chunks_to_render.put((cx, cy))
 
 
     def render_block_to_batch(self, pos, block, batch):
@@ -31,27 +45,29 @@ class WorldRenderer:
         batch.add_indexed((len(indexes), GL_QUADS, None, indexes, ("v3f", vertices), ("c3B", colours)))
 
 
-    def render_chunk(self, x, y):
+    def render_chunk(self, cx, cy):
         batch = pyglet.graphics.Batch()
-        chunk = self.world_client.get_chunk(x, y)
+        chunk = self.world_client.get_chunk(cx, cy)
         if config.WorldRequestData.ChunkData not in chunk:
             self.log.warning("Didn't receive chunk data, queuing for later.")
             self.log.debug("Actually received: {}".format(chunk))
-            self.request_chunk(x, y)
+            self.request_chunk(cx, cy)
             return
         chunk = chunk[config.WorldRequestData.ChunkData]
         for pos, block in chunk:
             self.render_block_to_batch(pos, block, batch)
         self.rendered_chunks.append(((cx, cy), batch))
+        self.log.info("Rendered chunk ({}, {})".format(cx, cy))
 
 
     def run(self):
         while self.__running__.value:
             try:
-                x, y = self.chunks_to_render.get(timeout=config.WorldRenderer.RendererWaitTime)
+                cx, cy = self.chunks_to_render.get(timeout=config.WorldRenderer.RendererWaitTime)
+                self.log.info("Got request for chunk ({}, {})".format(cx, cy))
             except queue.Empty: continue
 
-            self.render_chunk(x, y)
+            self.render_chunk(cx, cy)
 
 
     def draw(window):
@@ -68,7 +84,7 @@ class WorldRenderer:
 
     def block_vertices(self, x, y, z, block):
         """Returns the vertices index and the actual screen vertices for a cube, in the correct order."""
-        n = config.WorldRenderer.BlockSize
+        n = config.World.VoxelSize
         x = x*n*2
         y = y*n*2
         z = z*n*2
@@ -122,12 +138,11 @@ class TestWorldRenderer(unittest.TestCase):
         self.world_client = self.world_server.get_main_client()
         self.renderer = WorldRenderer(self.world_client, self.log)
         self.world_server.start()
-        self.renderer.start()
 
 
     def tearDown(self):
         self.world_server.stop()
-        self.renderer.stop()
+        self.world_server.join()
 
 
     def test_block_vertices(self):
@@ -136,10 +151,12 @@ class TestWorldRenderer(unittest.TestCase):
 
 
     def test_request_chunk(self):
-        self.renderer.request_chunk(0, 0)
-        time.sleep(2)
+        self.renderer.render_chunk(0, 0)
+
         for p, c in self.renderer.rendered_chunks:
             if p == (0, 0):
                 break
         else:
-            self.fail("Renderer didn't load chunk (0, 0) within 2 seconds.")
+            self.fail("Renderer didn't load chunk (0, 0)")
+        #for i in range(10):
+            #time.sleep(0.200)
