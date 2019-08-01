@@ -1,0 +1,117 @@
+MainProcess         :world_data.py       :__init__            [139] INFO     WorldDataServer is ready.
+MainProcess         :world_data.py       :start               [145] INFO     WorldDataServer is started.
+MainProcess         :world_data.py       :__send_request__    [33 ] DEBUG    Sending request: (<WorldRequests.InitChunkReq: 'init_chunk'>, {<WorldRequestData.ChunkPos: 'chunk_pos'>: (0, 0), <WorldRequestData.ChunkData: 'chunk_data'>: <chunk.Chunk object at 0x7f087deaed30>})
+WorldDataServer-1   :world_data.py       :handle_request      [260] INFO     Received Init Chunk request from client 'Main'
+WorldDataServer-1   :world_data.py       :handle_request      [278] DEBUG    Replying with: [<WorldRequests.InitChunkReq: 'init_chunk'>, None]
+MainProcess         :world_data.py       :__send_request__    [37 ] DEBUG    Server replied to request: (<WorldRequests.InitChunkReq: 'init_chunk'>, None)
+MainProcess         :world_data.py       :__send_request__    [33 ] DEBUG    Sending request: (<WorldRequests.InitChunkReq: 'init_chunk'>, {<WorldRequestData.ChunkPos: 'chunk_pos'>: (0, 0), <WorldRequestData.ChunkData: 'chunk_data'>: <chunk.Chunk object at 0x7f087deaed30>})
+WorldDataServer-1   :world_data.py       :handle_request      [260] INFO     Received Init Chunk request from client 'Main'
+WorldDataServer-1   :world_data.py       :handle_request      [274] WARNING  A chunk was initialized twice
+WorldDataServer-1   :world_data.py       :handle_request      [275] DEBUG    Chunk: (0, 0)
+WorldDataServer-1   :world_data.py       :handle_request      [278] DEBUG    Replying with: [<WorldRequests.DuplicateInit: 'dupe_init_chunk'>, None]
+MainProcess         :world_data.py       :__send_request__    [37 ] DEBUG    Server replied to request: (<WorldRequests.DuplicateInit: 'dupe_init_chunk'>, None)
+MainProcess         :world_data.py       :__handle_fail__     [45 ] WARNING  Request failed: WorldRequests.DuplicateInit
+MainProcess         :world_data.py       :__handle_fail__     [46 ] DEBUG    Failed request data: None
+MainProcess         :world_data.py       :stop                [149] INFO     WorldDataServer is stopping.
+MainProcess         :world_data.py       :__init__            [139] INFO     WorldDataServer is ready.
+MainProcess         :world_data.py       :__init__            [139] INFO     WorldDataServer is ready.
+MainProcess         :world_data.py       :start               [145] INFO     WorldDataServer is started.
+MainProcess         :world_data.py       :start               [145] INFO     WorldDataServer is started.
+MainProcess         :world_data.py       :__send_request__    [33 ] DEBUG    Sending request: (<WorldRequests.NewClientReq: 'new_client'>, {'name': None})
+MainProcess         :world_data.py       :__send_request__    [33 ] DEBUG    Sending request: (<WorldRequests.NewClientReq: 'new_client'>, {'name': None})
+WorldDataServer-2   :world_data.py       :handle_request      [217] INFO     Received New Client request from client 'Main'
+WorldDataServer-2   :world_data.py       :handle_request      [217] INFO     Received New Client request from client 'Main'
+WorldDataServer-2   :world_data.py       :new_client          [194] INFO     Created a new client 'berzt'
+WorldDataServer-2   :world_data.py       :new_client          [194] INFO     Created a new client 'berzt'
+WorldDataServer-2   :world_data.py       :handle_request      [278] DEBUG    Replying with: [<WorldRequests.NewClientReq: 'new_client'>, {<WorldRequestData.NewClient: 'new_client'>: <world_data.WorldDataClient object at 0x7f087deb9358>}]
+WorldDataServer-2   :world_data.py       :handle_request      [278] DEBUG    Replying with: [<WorldRequests.NewClientReq: 'new_client'>, {<WorldRequestData.NewClient: 'new_client'>: <world_data.WorldDataClient object at 0x7f087deb9358>}]
+MainProcess         :world_data.py       :__send_request__    [37 ] DEBUG    Server replied to request: (<WorldRequests.NewClientReq: 'new_client'>, {<WorldRequestData.NewClient: 'new_client'>: <world_data.WorldDataClient object at 0x7f087deb9208>})
+MainProcess         :world_data.py       :__send_request__    [37 ] DEBUG    Server replied to request: (<WorldRequests.NewClientReq: 'new_client'>, {<WorldRequestData.NewClient: 'new_client'>: <world_data.WorldDataClient object at 0x7f087deb9208>})
+MainProcess         :world_data.py       :__send_request__    [33 ] DEBUG    Sending request: (<WorldRequests.PingReq: 'ping'>, None)
+MainProcess         :world_data.py       :__send_request__    [33 ] DEBUG    Sending request: (<WorldRequests.PingReq: 'ping'>, None)
+WorldDataServer-2   :world_data.py       :handle_request      [212] INFO     Received Ping request from client 'berzt'
+WorldDataServer-2   :world_data.py       :handle_request      [212] INFO     Received Ping request from client 'berzt'
+WorldDataServer-2   :world_data.py       :handle_request      [278] DEBUG    Replying with: [<WorldRequests.PingReq: 'ping'>, {<WorldRequestData.Pong: 'pong'>: 'pong'}]
+WorldDataServer-2   :world_data.py       :handle_request      [278] DEBUG    Replying with: [<WorldRequests.PingReq: 'ping'>, {<WorldRequestData.Pong: 'pong'>: 'pong'}]
+MainProcess         :world_data.py       :__send_request__    [37 ] DEBUG    Server replied to request: (<WorldRequests.PingReq: 'ping'>, {<WorldRequestData.Pong: 'pong'>: 'pong'})
+MainProcess         :world_data.py       :__send_request__    [37 ] DEBUG    Server replied to request: (<WorldRequests.PingReq: 'ping'>, {<WorldRequestData.Pong: 'pong'>: 'pong'})
+MainProcess         :world_data.py       :stop                [149] INFO     WorldDataServer is stopping.
+MainProcess         :world_data.py       :stop                [149] INFO     WorldDataServer is stopping.
+WorldDataServer-2   :world_data.py       :run                 [297] INFO     WorldDataServer: Client closed connection, 'berzt'
+WorldDataServer-2   :world_data.py       :run                 [297] INFO     WorldDataServer: Client closed connection, 'berzt'
+MainProcess         :world_data.py       :__init__            [139] INFO     WorldDataServer is ready.
+MainProcess         :world_data.py       :__init__            [139] INFO     WorldDataServer is ready.
+MainProcess         :world_data.py       :__init__            [139] INFO     WorldDataServer is ready.
+MainProcess         :world_data.py       :start               [145] INFO     WorldDataServer is started.
+MainProcess         :world_data.py       :start               [145] INFO     WorldDataServer is started.
+MainProcess         :world_data.py       :start               [145] INFO     WorldDataServer is started.
+MainProcess         :world_data.py       :__send_request__    [33 ] DEBUG    Sending request: (<WorldRequests.PingReq: 'ping'>, None)
+MainProcess         :world_data.py       :__send_request__    [33 ] DEBUG    Sending request: (<WorldRequests.PingReq: 'ping'>, None)
+MainProcess         :world_data.py       :__send_request__    [33 ] DEBUG    Sending request: (<WorldRequests.PingReq: 'ping'>, None)
+WorldDataServer-3   :world_data.py       :handle_request      [212] INFO     Received Ping request from client 'Main'
+WorldDataServer-3   :world_data.py       :handle_request      [212] INFO     Received Ping request from client 'Main'
+WorldDataServer-3   :world_data.py       :handle_request      [212] INFO     Received Ping request from client 'Main'
+WorldDataServer-3   :world_data.py       :handle_request      [278] DEBUG    Replying with: [<WorldRequests.PingReq: 'ping'>, {<WorldRequestData.Pong: 'pong'>: 'pong'}]
+WorldDataServer-3   :world_data.py       :handle_request      [278] DEBUG    Replying with: [<WorldRequests.PingReq: 'ping'>, {<WorldRequestData.Pong: 'pong'>: 'pong'}]
+WorldDataServer-3   :world_data.py       :handle_request      [278] DEBUG    Replying with: [<WorldRequests.PingReq: 'ping'>, {<WorldRequestData.Pong: 'pong'>: 'pong'}]
+MainProcess         :world_data.py       :__send_request__    [37 ] DEBUG    Server replied to request: (<WorldRequests.PingReq: 'ping'>, {<WorldRequestData.Pong: 'pong'>: 'pong'})
+MainProcess         :world_data.py       :__send_request__    [37 ] DEBUG    Server replied to request: (<WorldRequests.PingReq: 'ping'>, {<WorldRequestData.Pong: 'pong'>: 'pong'})
+MainProcess         :world_data.py       :__send_request__    [37 ] DEBUG    Server replied to request: (<WorldRequests.PingReq: 'ping'>, {<WorldRequestData.Pong: 'pong'>: 'pong'})
+MainProcess         :world_data.py       :stop                [149] INFO     WorldDataServer is stopping.
+MainProcess         :world_data.py       :stop                [149] INFO     WorldDataServer is stopping.
+MainProcess         :world_data.py       :stop                [149] INFO     WorldDataServer is stopping.
+MainProcess         :world_data.py       :__init__            [139] INFO     WorldDataServer is ready.
+MainProcess         :world_data.py       :__init__            [139] INFO     WorldDataServer is ready.
+MainProcess         :world_data.py       :__init__            [139] INFO     WorldDataServer is ready.
+MainProcess         :world_data.py       :__init__            [139] INFO     WorldDataServer is ready.
+MainProcess         :world_data.py       :start               [145] INFO     WorldDataServer is started.
+MainProcess         :world_data.py       :start               [145] INFO     WorldDataServer is started.
+MainProcess         :world_data.py       :start               [145] INFO     WorldDataServer is started.
+MainProcess         :world_data.py       :start               [145] INFO     WorldDataServer is started.
+MainProcess         :world_data.py       :__send_request__    [33 ] DEBUG    Sending request: (<WorldRequests.SetChunkReq: 'set_chunk'>, {<WorldRequestData.ChunkPos: 'chunk_pos'>: (0, 0), <WorldRequestData.ChunkData: 'chunk_data'>: <chunk.Chunk object at 0x7f087deb99e8>})
+MainProcess         :world_data.py       :__send_request__    [33 ] DEBUG    Sending request: (<WorldRequests.SetChunkReq: 'set_chunk'>, {<WorldRequestData.ChunkPos: 'chunk_pos'>: (0, 0), <WorldRequestData.ChunkData: 'chunk_data'>: <chunk.Chunk object at 0x7f087deb99e8>})
+MainProcess         :world_data.py       :__send_request__    [33 ] DEBUG    Sending request: (<WorldRequests.SetChunkReq: 'set_chunk'>, {<WorldRequestData.ChunkPos: 'chunk_pos'>: (0, 0), <WorldRequestData.ChunkData: 'chunk_data'>: <chunk.Chunk object at 0x7f087deb99e8>})
+MainProcess         :world_data.py       :__send_request__    [33 ] DEBUG    Sending request: (<WorldRequests.SetChunkReq: 'set_chunk'>, {<WorldRequestData.ChunkPos: 'chunk_pos'>: (0, 0), <WorldRequestData.ChunkData: 'chunk_data'>: <chunk.Chunk object at 0x7f087deb99e8>})
+WorldDataServer-4   :world_data.py       :handle_request      [232] INFO     Received Set Chunk request from client 'Main'
+WorldDataServer-4   :world_data.py       :handle_request      [232] INFO     Received Set Chunk request from client 'Main'
+WorldDataServer-4   :world_data.py       :handle_request      [232] INFO     Received Set Chunk request from client 'Main'
+WorldDataServer-4   :world_data.py       :handle_request      [232] INFO     Received Set Chunk request from client 'Main'
+WorldDataServer-4   :world_data.py       :handle_request      [278] DEBUG    Replying with: [<WorldRequests.SetChunkReq: 'set_chunk'>, None]
+WorldDataServer-4   :world_data.py       :handle_request      [278] DEBUG    Replying with: [<WorldRequests.SetChunkReq: 'set_chunk'>, None]
+WorldDataServer-4   :world_data.py       :handle_request      [278] DEBUG    Replying with: [<WorldRequests.SetChunkReq: 'set_chunk'>, None]
+WorldDataServer-4   :world_data.py       :handle_request      [278] DEBUG    Replying with: [<WorldRequests.SetChunkReq: 'set_chunk'>, None]
+MainProcess         :world_data.py       :__send_request__    [37 ] DEBUG    Server replied to request: (<WorldRequests.SetChunkReq: 'set_chunk'>, None)
+MainProcess         :world_data.py       :__send_request__    [37 ] DEBUG    Server replied to request: (<WorldRequests.SetChunkReq: 'set_chunk'>, None)
+MainProcess         :world_data.py       :__send_request__    [37 ] DEBUG    Server replied to request: (<WorldRequests.SetChunkReq: 'set_chunk'>, None)
+MainProcess         :world_data.py       :__send_request__    [37 ] DEBUG    Server replied to request: (<WorldRequests.SetChunkReq: 'set_chunk'>, None)
+MainProcess         :world_data.py       :__send_request__    [33 ] DEBUG    Sending request: (<WorldRequests.GetChunkReq: 'get_chunk'>, {<WorldRequestData.ChunkPos: 'chunk_pos'>: (0, 0)})
+MainProcess         :world_data.py       :__send_request__    [33 ] DEBUG    Sending request: (<WorldRequests.GetChunkReq: 'get_chunk'>, {<WorldRequestData.ChunkPos: 'chunk_pos'>: (0, 0)})
+MainProcess         :world_data.py       :__send_request__    [33 ] DEBUG    Sending request: (<WorldRequests.GetChunkReq: 'get_chunk'>, {<WorldRequestData.ChunkPos: 'chunk_pos'>: (0, 0)})
+MainProcess         :world_data.py       :__send_request__    [33 ] DEBUG    Sending request: (<WorldRequests.GetChunkReq: 'get_chunk'>, {<WorldRequestData.ChunkPos: 'chunk_pos'>: (0, 0)})
+WorldDataServer-4   :world_data.py       :handle_request      [246] INFO     Receiuved Get Chunk request from client 'Main'
+WorldDataServer-4   :world_data.py       :handle_request      [246] INFO     Receiuved Get Chunk request from client 'Main'
+WorldDataServer-4   :world_data.py       :handle_request      [246] INFO     Receiuved Get Chunk request from client 'Main'
+WorldDataServer-4   :world_data.py       :handle_request      [246] INFO     Receiuved Get Chunk request from client 'Main'
+WorldDataServer-4   :world_data.py       :handle_request      [278] DEBUG    Replying with: [<WorldRequests.GetChunkReq: 'get_chunk'>, {<WorldRequestData.ChunkData: 'chunk_data'>: <chunk.Chunk object at 0x7f087deb9e80>}]
+WorldDataServer-4   :world_data.py       :handle_request      [278] DEBUG    Replying with: [<WorldRequests.GetChunkReq: 'get_chunk'>, {<WorldRequestData.ChunkData: 'chunk_data'>: <chunk.Chunk object at 0x7f087deb9e80>}]
+WorldDataServer-4   :world_data.py       :handle_request      [278] DEBUG    Replying with: [<WorldRequests.GetChunkReq: 'get_chunk'>, {<WorldRequestData.ChunkData: 'chunk_data'>: <chunk.Chunk object at 0x7f087deb9e80>}]
+WorldDataServer-4   :world_data.py       :handle_request      [278] DEBUG    Replying with: [<WorldRequests.GetChunkReq: 'get_chunk'>, {<WorldRequestData.ChunkData: 'chunk_data'>: <chunk.Chunk object at 0x7f087deb9e80>}]
+MainProcess         :world_data.py       :__send_request__    [37 ] DEBUG    Server replied to request: (<WorldRequests.GetChunkReq: 'get_chunk'>, {<WorldRequestData.ChunkData: 'chunk_data'>: <chunk.Chunk object at 0x7f087decb278>})
+MainProcess         :world_data.py       :__send_request__    [37 ] DEBUG    Server replied to request: (<WorldRequests.GetChunkReq: 'get_chunk'>, {<WorldRequestData.ChunkData: 'chunk_data'>: <chunk.Chunk object at 0x7f087decb278>})
+MainProcess         :world_data.py       :__send_request__    [37 ] DEBUG    Server replied to request: (<WorldRequests.GetChunkReq: 'get_chunk'>, {<WorldRequestData.ChunkData: 'chunk_data'>: <chunk.Chunk object at 0x7f087decb278>})
+MainProcess         :world_data.py       :__send_request__    [37 ] DEBUG    Server replied to request: (<WorldRequests.GetChunkReq: 'get_chunk'>, {<WorldRequestData.ChunkData: 'chunk_data'>: <chunk.Chunk object at 0x7f087decb278>})
+MainProcess         :world_data.py       :stop                [149] INFO     WorldDataServer is stopping.
+MainProcess         :world_data.py       :stop                [149] INFO     WorldDataServer is stopping.
+MainProcess         :world_data.py       :stop                [149] INFO     WorldDataServer is stopping.
+MainProcess         :world_data.py       :stop                [149] INFO     WorldDataServer is stopping.
+MainProcess         :world_data.py       :__init__            [139] INFO     WorldDataServer is ready.
+MainProcess         :world_data.py       :start               [145] INFO     WorldDataServer is started.
+MainProcess         :world_data.py       :stop                [149] INFO     WorldDataServer is stopping.
+MainProcess         :world_data.py       :__init__            [139] INFO     WorldDataServer is ready.
+MainProcess         :world_data.py       :start               [145] INFO     WorldDataServer is started.
+MainProcess         :world_data.py       :__send_request__    [33 ] DEBUG    Sending request: (<WorldRequests.GetChunkReq: 'get_chunk'>, {<WorldRequestData.ChunkPos: 'chunk_pos'>: (0, 0)})
+WorldDataServer-7   :world_data.py       :handle_request      [246] INFO     Receiuved Get Chunk request from client 'Main'
+WorldDataServer-7   :world_data.py       :handle_request      [278] DEBUG    Replying with: [<WorldRequests.GetChunkReq: 'get_chunk'>, {<WorldRequestData.ChunkData: 'chunk_data'>: <chunk.Chunk object at 0x7f087decb5c0>}]
+MainProcess         :world_data.py       :__send_request__    [37 ] DEBUG    Server replied to request: (<WorldRequests.GetChunkReq: 'get_chunk'>, {<WorldRequestData.ChunkData: 'chunk_data'>: <chunk.Chunk object at 0x7f087decb588>})
+MainProcess         :world_renderer.py   :render_chunk        [60 ] INFO     Rendered chunk (0, 0)
+MainProcess         :world_data.py       :stop                [149] INFO     WorldDataServer is stopping.
