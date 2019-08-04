@@ -57,6 +57,7 @@ class WorldRequests(Enum):
     GetChunkReq = 'get_chunk'
     InitChunkReq = 'init_chunk'
     DuplicateInit = 'dupe_init_chunk'
+    IsGenerated = 'is_generated'
 
 @unique
 class WorldRequestData(Enum):
@@ -66,6 +67,7 @@ class WorldRequestData(Enum):
     NewClient = 'new_client'
     ChunkPos = 'chunk_pos'
     ChunkData = 'chunk_data'
+    Boolean = 'boolean'
 
 
 @unique

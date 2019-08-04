@@ -105,8 +105,11 @@ class WorldDataClient:
 
     def is_generated(self, cx, cy):
         """Returns True if the chunk has already been generated, False otherwise."""
-        chunk = self.get_chunk(cx, cy)
-        return chunk.is_generated()
+        req = config.WorldRequests.IsGenerated
+        req_data = {config.WorldRequestData.ChunkPos: (cx, cy)}
+        res = self.__send_request__(req, req_data)
+        if self.__handle_fail__(res): return None
+        else: return res[1][config.WorldRequestData.Boolean]
 
 
     @classmethod
@@ -280,6 +283,22 @@ class WorldDataServer(mp.Process):
                 self.log.debug("Chunk: ({}, {})".format(cx, cy))
                 response[0] = config.WorldRequests.DuplicateInit
 
+        elif req[0] == config.WorldRequests.IsGenerated:
+            self.log.info("Received Is Generated request from client '{}'".format(cli_name))
+
+            cx, cy = req[1][config.WorldRequestData.ChunkPos]
+            try:
+                if self.get_chunk(cx, cy).is_generated():
+                    response[1] = {config.WorldRequestData.Boolean: True}
+                else:
+                    response[1] = {config.WorldRequestData.Boolean: False}
+                response[0] = config.WorldRequests.IsGenerated
+            except Exception as e:
+                self.log.warning("Failed to check if chunk is generated.")
+                self.log.debug("Chunk: ({}, {})".format(cx, cy))
+                response[0] = config.WorldRequests.FailedReq
+
+
         self.log.debug("Replying with: {}".format(response))
         cli.send(tuple(response))
 
@@ -358,6 +377,18 @@ class TestWorldDataServer(unittest.TestCase):
         self.assertFalse(res)
 
         res = self.world_client.init_chunk(0, 0, chunk)
+        self.assertTrue(res)
+
+    def test_is_generated(self):
+        res = self.world_client.is_generated(0, 0)
+        self.assertFalse(res, "World Client says an ungenerated chunk is already generated.")
+
+        chunk = Chunk()
+        chunk.set_block(0, 0, 0, Block(config.BlockType.Grass))
+        res = self.world_client.init_chunk(0, 0, chunk)
+        self.assertFalse(res, "Couldn't init the chunk.")
+
+        res = self.world_client.is_generated(0, 0)
         self.assertTrue(res)
 
 
