@@ -116,17 +116,19 @@ class WorldDataClient:
 
     @classmethod
     def abs_block_to_chunk_block(cls, abx, aby, abz):
-        # config.World.VoxelSize
-        cx = int(abx / config.WorldDataServer.ChunkSize)
-        bx = abs(abx - (cx * config.WorldDataServer.ChunkSize))
-        by = aby
-        cy = int(abz / config.WorldDataServer.ChunkSize)
-        bz = abs(abz - (cy * config.WorldDataServer.ChunkSize))
+        bx = abx % config.WorldDataServer.ChunkSize
+        cx = (abx - bx) / config.WorldDataServer.ChunkSize
 
-        if abx < 0:
-            cx -= 1
-        if abz < 0:
-            cy -= 1
+        by = aby
+
+        bz = abz % config.WorldDataServer.ChunkSize
+        cy = (abz - bz) / config.WorldDataServer.ChunkSize
+
+        bx = int(bx)
+        cx = int(cx)
+        by = int(by)
+        bz = int(bz)
+        cy = int(cy)
         return ((cx, cy), (bx, by, bz))
 
 
@@ -411,25 +413,57 @@ class TestWorldDataServer(unittest.TestCase):
 
 
 class TestWorldDataClient(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        M = config.WorldDataServer.ChunkSize
+        cls.tests = {
+            ((0, 0), (0, 0, 0)): (0, 0, 0),
+            ((0, 0), (1, 0, 0)): (1, 0, 0),
+            ((0, 0), (0, 0, 1)): (0, 0, 1),
+            ((0, 0), (2, 0, 3)): (2, 0, 3),
+
+            ((1, 0), (0, 0, 0)): (M, 0, 0),
+            ((1, 0), (1, 0, 0)): (M+1, 0, 0),
+            ((1, 0), (0, 0, 1)): (M, 0, 1),
+            ((1, 0), (2, 0, 3)): (M+2, 0, 3),
+
+            ((0, 1), (0, 0, 0)): (0, 0, M),
+            ((0, 1), (1, 0, 0)): (1, 0, M),
+            ((0, 1), (0, 0, 1)): (0, 0, M+1),
+            ((0, 1), (2, 0, 3)): (2, 0, M+3),
+
+            ((0, -1), (0, 0, 0)): (0, 0, -M),
+            ((0, -1), (1, 0, 0)): (1, 0, -M),
+            ((0, -1), (0, 0, 1)): (0, 0, -M+1),
+            ((0, -1), (2, 0, 3)): (2, 0, -M+3),
+
+            ((-1, 0), (0, 0, 0)): (-M, 0, 0),
+            ((-1, 0), (1, 0, 0)): (-M+1, 0, 0),
+            ((-1, 0), (0, 0, 1)): (-M, 0, 1),
+            ((-1, 0), (2, 0, 3)): (-M+2, 0, 3),
+
+            ((2, 3), (0, 0, 0)): (2*M, 0, 3*M),
+            ((2, 3), (1, 0, 0)): (2*M+1, 0, 3*M),
+            ((2, 3), (0, 0, 1)): (2*M, 0, 3*M+1),
+            ((2, 3), (2, 0, 3)): (2*M+2, 0, 3*M+3),
+
+            ((-2, -3), (0, 0, 0)): (-2*M, 0, -3*M),
+            ((-2, -3), (1, 0, 0)): (-2*M+1, 0, -3*M),
+            ((-2, -3), (0, 0, 1)): (-2*M, 0, -3*M+1),
+            ((-2, -3), (2, 0, 3)): (-2*M+2, 0, -3*M+3),
+        }
+
     def test_abs_block_to_chunk_block(self):
-        self.assertEqual(config.WorldDataServer.ChunkSize, 16, "This test needs to be reworked if the block size changes")
-        self.assertEqual(WorldDataClient.abs_block_to_chunk_block(-17, -17, -17),
-                         ((-2, -2), (1, -17, 1)))
-        self.assertEqual(WorldDataClient.abs_block_to_chunk_block(-16, -16, -16),
-                         ((-2, -2), (0, -16, 0)))
-        self.assertEqual(WorldDataClient.abs_block_to_chunk_block(-15, -15, -15),
-                         ((-1, -1), (15, -15, 15)))
-        self.assertEqual(WorldDataClient.abs_block_to_chunk_block(-1, -1, -1),
-                         ((-1, -1), (0, -1, 0)))
-        self.assertEqual(WorldDataClient.abs_block_to_chunk_block(0, 0, 0),
-                         ((0, 0), (0, 0, 0)))
-        self.assertEqual(WorldDataClient.abs_block_to_chunk_block(1, 1, 1),
-                         ((0, 0), (1, 1, 1)))
-        self.assertEqual(WorldDataClient.abs_block_to_chunk_block(15, 15, 15),
-                         ((0, 0), (15, 15, 15)))
-        self.assertEqual(WorldDataClient.abs_block_to_chunk_block(16, 16, 16),
-                         ((1, 1), (0, 16, 0)))
-        self.assertEqual(WorldDataClient.abs_block_to_chunk_block(17, 17, 17),
-                         ((1, 1), (1, 17, 1)))
-        self.assertEqual(WorldDataClient.abs_block_to_chunk_block(17, config.WorldDataServer.WorldHeight-1, 17),
-                         ((1, 1), (1, config.WorldDataServer.WorldHeight-1, 1)))
+        for i, (corr, test) in enumerate(self.tests.items()):
+            res = WorldDataClient.abs_block_to_chunk_block(*test)
+            self.assertEqual(corr, res, "Test {}: Should be {}, but was {}".format(i, corr, res))
+
+
+    def test_chunk_block_to_abs_block(self):
+        for i, (test, corr) in enumerate(self.tests.items()):
+            try:
+                res = WorldDataClient.chunk_block_to_abs_block(*test[0], *test[1])
+            except Exception as e:
+                print(test)
+                raise Exception(e)
+            self.assertEqual(corr, res, "Test {}: Should be {}, but was {}".format(i, corr, res))
