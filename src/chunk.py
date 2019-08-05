@@ -34,6 +34,14 @@ class Chunk:
 
 
     @classmethod
+    def all_positions(cls):
+        for bx, by, bz in itertools.product(range(config.WorldDataServer.ChunkSize),
+                                            range(config.WorldDataServer.WorldHeight),
+                                            range(config.WorldDataServer.ChunkSize)):
+            yield (bx, by, bz)
+
+
+    @classmethod
     def __check_position__(cls, bx, by, bz):
         if not 0 <= bx < config.WorldDataServer.ChunkSize:
             raise ValueError("X coordinate must be > 0 and < {}, not {}".format(config.WorldDataServer.ChunkSize, bx))
@@ -156,3 +164,11 @@ class TestChunk(unittest.TestCase):
             config.WorldDataServer.WorldHeight = orig
 
 
+    def test_all_positions(self):
+        all_positions = list(Chunk.all_positions())
+        corr = []
+        for x in range(config.WorldDataServer.ChunkSize):
+            for y in range(config.WorldDataServer.WorldHeight):
+                for z in range(config.WorldDataServer.ChunkSize):
+                    corr.append((x, y, z))
+        self.assertCountEqual(corr, all_positions)
