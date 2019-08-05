@@ -45,9 +45,9 @@ class Chunk:
     def __check_position__(cls, bx, by, bz):
         if not 0 <= bx < config.WorldDataServer.ChunkSize:
             raise ValueError("X coordinate must be > 0 and < {}, not {}".format(config.WorldDataServer.ChunkSize, bx))
-        if not 0 <= by < config.WorldDataServer.ChunkSize:
+        if not 0 <= by < config.WorldDataServer.WorldHeight:
             raise ValueError("Y coordinate must be > 0 and < {}, not {}".format(config.WorldDataServer.ChunkSize, by))
-        if not 0 <= bz < config.WorldDataServer.WorldHeight:
+        if not 0 <= bz < config.WorldDataServer.ChunkSize:
             raise ValueError("Z coordinate must be > 0 and < {}, not {}".format(config.WorldDataServer.WorldHeight, bz))
 
 
@@ -96,7 +96,7 @@ class TestChunk(unittest.TestCase):
             Chunk.__check_position__(0, -1, 0)
             Chunk.__check_position__(0, 0, -1)
             Chunk.__check_position__(config.WorldDataServer.ChunkSize, 0, 0)
-            Chunk.__check_position__(0, config.WorldDataServer.ChunkSize, 0)
+            Chunk.__check_position__(0, config.WorldDataServer.WorldHeight, 0)
             Chunk.__check_position__(0, 0, config.WorldDataServer.ChunkSize)
         t = None
         try:
@@ -115,10 +115,10 @@ class TestChunk(unittest.TestCase):
             t = (config.WorldDataServer.ChunkSize-1, 0, 0)
             Chunk.__check_position__(*t)
 
-            t = (0, config.WorldDataServer.ChunkSize-1, 0)
+            t = (0, config.WorldDataServer.WorldHeight-1, 0)
             Chunk.__check_position__(*t)
 
-            t = (0, 0, config.WorldDataServer.WorldHeight-1)
+            t = (0, 0, config.WorldDataServer.ChunkSize-1)
             Chunk.__check_position__(*t)
         except:
             self.fail("__check_position__ failed the valid position {}".format(t))
