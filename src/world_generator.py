@@ -6,19 +6,7 @@ from world_data import WorldDataServer, WorldDataClient
 import config
 from block import Block
 from chunk import Chunk
-
-
-class DefaultGeneration:
-    name = "Default"
-
-    @classmethod
-    def generate(cls, cx, cy, world_client):
-        print("Only giving grass blocks in chunk")
-        chunk = Chunk()
-        for pos in chunk.all_positions():
-            if pos[1] < config.WorldDataServer.WorldHeight / 2:
-                chunk.set_block(*pos, Block(config.BlockType.Grass))
-        return chunk
+import generations
 
 
 class WorldGenerator:
@@ -81,12 +69,6 @@ class WorldGenerator:
         self.chunks_to_generate.put((cx, cy))
 
 
-    @classmethod
-    def pick_generation(cls, cx, cy):
-        """To be used in future to pick biomes or such. Currently just gets the DefaultGeneration class."""
-        return DefaultGeneration
-
-
 class WorldGenerationSlave(mp.Process):
     """A slave that is created by WorldGenerator. This class actually does the generation of chunks in separate processes."""
     def __init__(self, running, world_client, parent_log, chunks_to_generate):
@@ -104,7 +86,7 @@ class WorldGenerationSlave(mp.Process):
             except QueueEmpty: continue
 
             if self.world_client.is_generated(cx, cy): continue
-            generation_type = WorldGenerator.pick_generation(cx, cy)
+            generation_type = generations.pick_generation(cx, cy, self.world_client)
             chunk = generation_type.generate(cx, cy, self.world_client)
             self.world_client.init_chunk(cx, cy, chunk)
 
