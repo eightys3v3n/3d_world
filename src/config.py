@@ -22,6 +22,7 @@ class Player:
 class WorldGenerator:
     Distance = 4 # chunks
     Processes = 2 # Number of processes generating chunks in parallel.
+    WaitTime = 1 # Specifies how long, in seconds, the generator slaves should wait for requests before checking if they should exit.
     RequestQueueSize = 256 # Number of chunks that can be requested before old requests are removed.
     RecentlyRequested = 10 # Number of seconds to store recently requested chunks. This is used to avoid two GenerationSlaves generating the same chunk more than once.
     GarbageCollectionInterval = 1.0 # Once every how many seconds should we clear out the recently requested chunk list.
