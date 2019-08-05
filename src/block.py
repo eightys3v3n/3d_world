@@ -7,6 +7,9 @@ class Block():
       raise ValueError("Invalid block type {}".format(block_type))
     self.block_type = block_type
 
+  def __repr__(self):
+    return self.__str__()
+
   def __str__(self):
     return str("A block of type {}".format(self.block_type))
 

@@ -19,6 +19,10 @@ class Chunk:
         return self.__blocks__ == other.__blocks__
 
 
+    def __repr__(self):
+        return self.__str__()
+
+
     def __str__(self):
         h = sha3_512()
         for p, b in self.__blocks__.items():

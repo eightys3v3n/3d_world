@@ -1,7 +1,10 @@
+import pyglet
 from pyglet.gl import *
 import multiprocessing as mp
 import queue, pyglet, time, unittest, logging
+import multiprocessing as mp
 import config, world_data
+import time
 
 
 class WorldRenderer(mp.Process):
@@ -10,20 +13,24 @@ class WorldRenderer(mp.Process):
         self.parent_log = parent_log
         self.log = self.parent_log.getChild("WorldRenderer")
         self.world_client = world_client
-        self.chunks_to_render = queue.Queue(config.WorldRenderer.MaxQueuedChunks)
-        self.rendered_chunks = []
+        self.chunks_to_render = mp.Queue(config.WorldRenderer.MaxQueuedChunks)
+        self.rendered_chunks = {}
+        self.rendered_chunks_to_add = mp.Queue(config.WorldRenderer.MaxQueuedChunks)
         self.__running__ = mp.Value('b', True) # Carry over because I planned to make this a seperate process.
+        self.last_chunk = ((None, None), 0) # Is ((cx, cy), time.time())
 
 
-    #def start(self, *args, **kwargs):
+    def start(self, *args, **kwargs):
         """Start the server and log that it has started."""
-        #super(WorldRenderer, self).start(*args, **kwargs)
-        #self.log.info("WorldRenderer is started.")
+        super(WorldRenderer, self).start(*args, **kwargs)
+        self.log.info("WorldRenderer is started.")
 
 
-    #def stop(self, *args, **kwargs):
-        #self.log.info("WorldRenderer is stopping.")
-        #self.__running__.value = False
+    def stop(self, *args, **kwargs):
+        self.log.info("WorldRenderer is stopping.")
+        self.__running__.value = False
+        self.join()
+        self.log.info("WorldRenderer stopped.")
 
 
     def chunk_is_rendered(self, x, y):
@@ -34,20 +41,49 @@ class WorldRenderer(mp.Process):
 
 
     def request_chunk(self, cx, cy):
-        if not self.chunk_is_rendered(cx, cy):
-            self.log.info("Requesting chunk to be rendered ({}, {})".format(cx, cy))
-            self.chunks_to_render.put((cx, cy))
+        if (cx, cy) != self.last_chunk[0] or time.time() - self.last_chunk[1] > 2:
+            if not self.chunk_is_rendered(cx, cy):
+                self.log.info("Requesting chunk to be rendered ({}, {})".format(cx, cy))
+                self.chunks_to_render.put((cx, cy))
+                self.last_chunk = ((cx, cy), time.time())
+
 
 
     def render_block_to_batch(self, pos, block, batch):
         indexes, vertices = self.block_vertices(*pos, block)
-        colours = self.block_colour(block)
-        batch.add_indexed((len(indexes), GL_QUADS, None, indexes, ("v3f", vertices), ("c3B", colours)))
+        colours = self.block_colour(block).value
+
+        data = (len(indexes), GL_QUADS, None, indexes, ("v3f", vertices), ("c3B", colours))
+        try:
+            assert len(vertices) == len(colours) == 72, "{} != {}".format(len(vertices), len(colours))
+            batch.add_indexed(*data)
+        except Exception  as e:
+            self.log.error(e)
+            self.log.debug(data)
+            raise Exception(e)
+
+
+    def render_block_to_batch_data(self, pos, block, batch_data):
+        indexes, vertices = self.block_vertices(*pos, block)
+        colours = self.block_colour(block).value
+
+        data = (len(indexes), GL_QUADS, None, indexes, ("v3f", vertices), ("c3B", colours))
+        batch_data.append(data)
+
+
+    def is_rendered(self, cx, cy):
+        if (cx, cy) in self.rendered_chunks: return True
+        return False
 
 
     def render_chunk(self, cx, cy):
+        if not self.world_client.is_generated(cx, cy):
+            self.log.info("Requested chunk isn't generated ({}, {})".format(cx, cy))
+            return
+
         batch = pyglet.graphics.Batch()
         chunk = self.world_client.get_chunk(cx, cy)
+        self.log.debug("Rendering chunk ({}, {})".format(cx, cy))
         if config.WorldRequestData.ChunkData not in chunk:
             self.log.warning("Didn't receive chunk data, queuing for later.")
             self.log.debug("Actually received: {}".format(chunk))
@@ -55,9 +91,10 @@ class WorldRenderer(mp.Process):
             return
         chunk = chunk[config.WorldRequestData.ChunkData]
         for pos, block in chunk:
+            #self.log.debug("Rendering block ({}, {}, {}) of type {}".format(*pos, block))
             self.render_block_to_batch(pos, block, batch)
-        self.rendered_chunks.append(((cx, cy), batch))
-        self.log.info("Rendered chunk ({}, {})".format(cx, cy))
+        self.log.debug("Rendered chunk ({}, {})".format(cx, cy))
+        self.rendered_chunks[(cx, cy)] = batch
 
 
     def run(self):
@@ -70,16 +107,17 @@ class WorldRenderer(mp.Process):
             self.render_chunk(cx, cy)
 
 
-    def draw(window):
+    def draw(self):
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
         glMatrixMode(GL_MODELVIEW)
-        glLoadIdentify()
-        for _, batch in self.rendered_chunks:
+        glLoadIdentity()
+        for (cx, cy), batch in self.rendered_chunks.items():
+            #self.log.info("Drawing chunk ({}, {})".format(cx, cy))
             batch.draw()
 
 
     def block_colour(self, block):
-       return config.BlockColour[block.block_type]
+       return config.BlockColour[block.block_type.value]
 
 
     def block_vertices(self, x, y, z, block):
@@ -151,6 +189,7 @@ class TestWorldRenderer(unittest.TestCase):
 
 
     def test_request_chunk(self):
+        return
         self.renderer.render_chunk(0, 0)
 
         for p, c in self.renderer.rendered_chunks:
@@ -160,3 +199,11 @@ class TestWorldRenderer(unittest.TestCase):
             self.fail("Renderer didn't load chunk (0, 0)")
         #for i in range(10):
             #time.sleep(0.200)
+
+    def test_rendered_chunk(self):
+        self.log.info("test_rendered_chunk")
+        self.renderer.start()
+        self.renderer.request_chunk(0, 0)
+        time.sleep(1)
+        self.renderer.download_rendered_chunks()
+        self.assertTrue(len(self.renderer.rendered_chunks) == 1)

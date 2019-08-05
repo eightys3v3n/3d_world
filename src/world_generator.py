@@ -88,7 +88,11 @@ class WorldGenerationSlave(mp.Process):
             if self.world_client.is_generated(cx, cy): continue
             generation_type = generations.pick_generation(cx, cy, self.world_client)
             chunk = generation_type.generate(cx, cy, self.world_client)
-            self.world_client.init_chunk(cx, cy, chunk)
+            res = self.world_client.init_chunk(cx, cy, chunk)
+            if res:
+                self.parent_log.info("Failed to initiate chunk ({}, {})".format(cx, cy))
+            else:
+                self.parent_log.info("Successfully initiated chunk ({}, {})".format(cx, cy))
 
 
 class TestWorldGeneration(unittest.TestCase):

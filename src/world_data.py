@@ -86,7 +86,7 @@ class WorldDataClient:
         cx: x position of the chunk to set.
         cy: y position of the chunk to set.
         chunk: A Chunk object to put at the specified location.
-        Returns False if successful and chunk was ungenerated, else returns True."""
+        Returns False if chunk wasn't already generated and setting the chunk was successful, else returns True."""
         req = config.WorldRequests.InitChunkReq
         req_data = {config.WorldRequestData.ChunkPos: (cx, cy), config.WorldRequestData.ChunkData: chunk}
         res = self.__send_request__(req, req_data)
@@ -115,12 +115,13 @@ class WorldDataClient:
 
 
     @classmethod
-    def abs_block_to_chunk_block(cls, abx, aby):
+    def abs_block_to_chunk_block(cls, abx, aby, abz):
         cx = int(abx / config.World.VoxelSize)
         bx = abx - (cx * config.World.VoxelSize)
-        cy = int(aby / config.World.VoxelSize)
-        by = aby - (cy * config.World.VoxelSize)
-        return ((cx, cy), (bx, by))
+        by = aby
+        cy = int(abz / config.World.VoxelSize)
+        bz = abz - (cy * config.World.VoxelSize)
+        return ((cx, cy), (bx, by, bz))
 
 
 class WorldDataServer(mp.Process):
@@ -398,13 +399,15 @@ class TestWorldDataServer(unittest.TestCase):
 class TestWorldDataClient(unittest.TestCase):
     def test_abs_block_to_chunk_block(self):
         self.assertEqual(config.World.VoxelSize, 16, "This test needs to be reworked if the block size changes")
-        self.assertEqual(WorldDataClient.abs_block_to_chunk_block(0, 0),
-                         ((0, 0), (0, 0)))
-        self.assertEqual(WorldDataClient.abs_block_to_chunk_block(1, 1),
-                         ((0, 0), (1, 1)))
-        self.assertEqual(WorldDataClient.abs_block_to_chunk_block(15, 15),
-                         ((0, 0), (15, 15)))
-        self.assertEqual(WorldDataClient.abs_block_to_chunk_block(16, 16),
-                         ((1, 1), (0, 0)))
-        self.assertEqual(WorldDataClient.abs_block_to_chunk_block(17, 17),
-                         ((1, 1), (1, 1)))
+        self.assertEqual(WorldDataClient.abs_block_to_chunk_block(0, 0, 0),
+                         ((0, 0), (0, 0, 0)))
+        self.assertEqual(WorldDataClient.abs_block_to_chunk_block(1, 1, 1),
+                         ((0, 0), (1, 1, 1)))
+        self.assertEqual(WorldDataClient.abs_block_to_chunk_block(15, 15, 15),
+                         ((0, 0), (15, 15, 15)))
+        self.assertEqual(WorldDataClient.abs_block_to_chunk_block(16, 16, 16),
+                         ((1, 1), (0, 16, 0)))
+        self.assertEqual(WorldDataClient.abs_block_to_chunk_block(17, 17, 17),
+                         ((1, 1), (1, 17, 1)))
+        self.assertEqual(WorldDataClient.abs_block_to_chunk_block(17, config.WorldDataServer.WorldHeight-1, 17),
+                         ((1, 1), (1, config.WorldDataServer.WorldHeight-1, 1)))

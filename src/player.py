@@ -1,4 +1,5 @@
 from pyglet.gl import *
+import config
 from math import cos,hypot,degrees,radians,sin,atan2
 import variables, utils
 from variables import window_height, window_width, cube_size
@@ -7,7 +8,7 @@ from variables import window_height, window_width, cube_size
 def legacy_get_abs_block_pos(player_pos):
   x = -player_pos[0]/config.World.VoxelSize/2
   y = -player_pos[1]/config.World.VoxelSize/2
-  z = position[2]/config.World.VoxelSize/2
+  z = player_pos[2]/config.World.VoxelSize/2
   x = round(x)
   y = round(y)
   z = round(z)
@@ -154,16 +155,15 @@ class PlayerManager():
 
 
   def standing_on(self):
-    return self.player.current_block
+    return [self.player.current_block[0],
+            self.player.current_block[2],
+            self.player.current_block[1],]
 
 
   def set_standing_on(self, new_block_pos):
+    """Returns a rectangle of what should be drawn."""
     self.player.current_block = new_block_pos
-    x = round(self.player.current_block[0]-variables.generate_distance)
-    x1 = round(self.player.current_block[0]+variables.generate_distance)
-    y = round(self.player.current_block[1]-variables.generate_distance)
-    y1 = round(self.player.current_block[1]+variables.generate_distance)
-    self.player.visible = [x,y,x1,y1]
+    #self.player.visible = [x,y,x1,y1]
 
 
   def get_visible(self):
@@ -174,7 +174,7 @@ class PlayerManager():
     """
     suppose to make the player fall to the ground if they aren't flying
     """
-    self.set_standing_on(self.world.get_abs_block_pos(self.player.position))
+    self.set_standing_on(legacy_get_abs_block_pos(self.player.position))
 
     if not self._flying:
       # get the highest block in the x,z that the player is in.
