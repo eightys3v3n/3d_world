@@ -154,8 +154,6 @@ class Game(pyglet.window.Window):
     if not self.world_renderer.is_rendered(*current_chunk):
       self.world_renderer.render_chunk(*current_chunk)
 
-    print(current_chunk)
-
     pyglet.gl.glColor3f(255, 255, 255)
     pyglet.graphics.draw_indexed(4, pyglet.gl.GL_POLYGON,
       [0, 1, 2, 3, 0],
