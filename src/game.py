@@ -152,8 +152,6 @@ class Game(pyglet.window.Window):
     """
     current_chunk = self.world_client.abs_block_to_chunk_block(*self.player.standing_on())[0]
     #self.world_generator.request_chunk(*current_chunk)
-    print(self.player.standing_on())
-    print(current_chunk)
     if not self.world_renderer.is_rendered(*current_chunk):
       self.world_renderer.render_chunk(*current_chunk)
 
@@ -289,6 +287,9 @@ class Game(pyglet.window.Window):
       self.log.debug("Dropping focus.")
       self.focus = False
       self.set_exclusive_mouse(False)
+
+    elif symbol == pyglet.window.key.G:
+      self.world_renderer.rendered_chunks = {}
 
     elif symbol == pyglet.window.key.D and modifiers & pyglet.window.key.MOD_ALT:
       self.set_exclusive_mouse(False)

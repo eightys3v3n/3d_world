@@ -116,12 +116,21 @@ class WorldDataClient:
 
     @classmethod
     def abs_block_to_chunk_block(cls, abx, aby, abz):
-        cx = int(abx / config.World.VoxelSize)
-        bx = abx - (cx * config.World.VoxelSize)
+        # config.World.VoxelSize
+        cx = int(abx / config.WorldDataServer.ChunkSize)
+        bx = abx - (cx * config.WorldDataServer.ChunkSize)
         by = aby
-        cy = int(abz / config.World.VoxelSize)
-        bz = abz - (cy * config.World.VoxelSize)
+        cy = int(abz / config.WorldDataServer.ChunkSize)
+        bz = abz - (cy * config.WorldDataServer.ChunkSize)
         return ((cx, cy), (bx, by, bz))
+
+
+    @classmethod
+    def chunk_block_to_abs_block(cls, cx, cy, bx, by, bz):
+        abx = cx * config.WorldDataServer.ChunkSize + bx
+        aby = by
+        abz = cy * config.WorldDataServer.ChunkSize + bz
+        return (abx, aby, abz)
 
 
 class WorldDataServer(mp.Process):

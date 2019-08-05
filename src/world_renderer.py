@@ -63,14 +63,6 @@ class WorldRenderer(mp.Process):
             raise Exception(e)
 
 
-    def render_block_to_batch_data(self, pos, block, batch_data):
-        indexes, vertices = self.block_vertices(*pos, block)
-        colours = self.block_colour(block).value
-
-        data = (len(indexes), GL_QUADS, None, indexes, ("v3f", vertices), ("c3B", colours))
-        batch_data.append(data)
-
-
     def is_rendered(self, cx, cy):
         if (cx, cy) in self.rendered_chunks: return True
         return False
@@ -91,7 +83,8 @@ class WorldRenderer(mp.Process):
             return
         chunk = chunk[config.WorldRequestData.ChunkData]
         for pos, block in chunk:
-            #self.log.debug("Rendering block ({}, {}, {}) of type {}".format(*pos, block))
+            pos = self.world_client.chunk_block_to_abs_block(cx, cy, *pos)
+            self.log.debug("Rendering block ({}, {}, {}) of type {}".format(*pos, block))
             self.render_block_to_batch(pos, block, batch)
         self.log.debug("Rendered chunk ({}, {})".format(cx, cy))
         self.rendered_chunks[(cx, cy)] = batch
