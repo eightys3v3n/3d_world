@@ -6,6 +6,8 @@ from block import Block
 import config
 
 
+# TODO Instead of returning request data from a WorldDataClient, it should set a 'last_response' variable.
+
 class WorldDataClient:
     """An object that connects to the WorldDataServer. Each seperate thread or process requires a seperate instance of this, Not a copy of it. You must use .new_client from the main client to create new instances."""
     def __init__(self, name, pipe, parent_log):
@@ -156,7 +158,8 @@ class WorldDataServer(mp.Process):
     def stop(self, *args, **kwargs):
         self.log.info("WorldDataServer is stopping.")
         self.__running__.value = False
-
+        self.join()
+        self.log.info("WorldDataServer stopped.")
 
 
     def set_chunk(self, cx, cy, chunk):
