@@ -13,7 +13,7 @@ class Debug:
 
 
 class Game:
-    PreventSleep = False
+    PreventSleep = True
 
 
 class Player:
