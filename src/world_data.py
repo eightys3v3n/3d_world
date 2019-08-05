@@ -118,10 +118,15 @@ class WorldDataClient:
     def abs_block_to_chunk_block(cls, abx, aby, abz):
         # config.World.VoxelSize
         cx = int(abx / config.WorldDataServer.ChunkSize)
-        bx = abx - (cx * config.WorldDataServer.ChunkSize)
+        bx = abs(abx - (cx * config.WorldDataServer.ChunkSize))
         by = aby
         cy = int(abz / config.WorldDataServer.ChunkSize)
-        bz = abz - (cy * config.WorldDataServer.ChunkSize)
+        bz = abs(abz - (cy * config.WorldDataServer.ChunkSize))
+
+        if abx < 0:
+            cx -= 1
+        if abz < 0:
+            cy -= 1
         return ((cx, cy), (bx, by, bz))
 
 
@@ -407,7 +412,15 @@ class TestWorldDataServer(unittest.TestCase):
 
 class TestWorldDataClient(unittest.TestCase):
     def test_abs_block_to_chunk_block(self):
-        self.assertEqual(config.World.VoxelSize, 16, "This test needs to be reworked if the block size changes")
+        self.assertEqual(config.WorldDataServer.ChunkSize, 16, "This test needs to be reworked if the block size changes")
+        self.assertEqual(WorldDataClient.abs_block_to_chunk_block(-17, -17, -17),
+                         ((-2, -2), (1, -17, 1)))
+        self.assertEqual(WorldDataClient.abs_block_to_chunk_block(-16, -16, -16),
+                         ((-2, -2), (0, -16, 0)))
+        self.assertEqual(WorldDataClient.abs_block_to_chunk_block(-15, -15, -15),
+                         ((-1, -1), (15, -15, 15)))
+        self.assertEqual(WorldDataClient.abs_block_to_chunk_block(-1, -1, -1),
+                         ((-1, -1), (0, -1, 0)))
         self.assertEqual(WorldDataClient.abs_block_to_chunk_block(0, 0, 0),
                          ((0, 0), (0, 0, 0)))
         self.assertEqual(WorldDataClient.abs_block_to_chunk_block(1, 1, 1),

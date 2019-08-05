@@ -7,46 +7,14 @@ import config, world_data
 import time
 
 
-class WorldRenderer(mp.Process):
+class WorldRenderer:
     def __init__(self, world_client, parent_log):
         super(WorldRenderer, self).__init__()
         self.parent_log = parent_log
         self.log = self.parent_log.getChild("WorldRenderer")
         self.world_client = world_client
-        self.chunks_to_render = mp.Queue(config.WorldRenderer.MaxQueuedChunks)
+        self.chunks_to_render = queue.Queue(config.WorldRenderer.MaxQueuedChunks)
         self.rendered_chunks = {}
-        self.rendered_chunks_to_add = mp.Queue(config.WorldRenderer.MaxQueuedChunks)
-        self.__running__ = mp.Value('b', True) # Carry over because I planned to make this a seperate process.
-        self.last_chunk = ((None, None), 0) # Is ((cx, cy), time.time())
-
-
-    def start(self, *args, **kwargs):
-        """Start the server and log that it has started."""
-        super(WorldRenderer, self).start(*args, **kwargs)
-        self.log.info("WorldRenderer is started.")
-
-
-    def stop(self, *args, **kwargs):
-        self.log.info("WorldRenderer is stopping.")
-        self.__running__.value = False
-        self.join()
-        self.log.info("WorldRenderer stopped.")
-
-
-    def chunk_is_rendered(self, x, y):
-        for p, _ in self.rendered_chunks:
-            if (x, y) == p:
-                return True
-        return False
-
-
-    def request_chunk(self, cx, cy):
-        if (cx, cy) != self.last_chunk[0] or time.time() - self.last_chunk[1] > 2:
-            if not self.chunk_is_rendered(cx, cy):
-                self.log.info("Requesting chunk to be rendered ({}, {})".format(cx, cy))
-                self.chunks_to_render.put((cx, cy))
-                self.last_chunk = ((cx, cy), time.time())
-
 
 
     def render_block_to_batch(self, pos, block, batch):
@@ -88,16 +56,6 @@ class WorldRenderer(mp.Process):
             self.render_block_to_batch(pos, block, batch)
         self.log.debug("Rendered chunk ({}, {})".format(cx, cy))
         self.rendered_chunks[(cx, cy)] = batch
-
-
-    def run(self):
-        while self.__running__.value:
-            try:
-                cx, cy = self.chunks_to_render.get(timeout=config.WorldRenderer.RendererWaitTime)
-                self.log.info("Got request for chunk ({}, {})".format(cx, cy))
-            except queue.Empty: continue
-
-            self.render_chunk(cx, cy)
 
 
     def draw(self):
@@ -181,22 +139,12 @@ class TestWorldRenderer(unittest.TestCase):
         pass
 
 
-    def test_request_chunk(self):
+    def test_render_chunk(self):
         return
         self.renderer.render_chunk(0, 0)
 
-        for p, c in self.renderer.rendered_chunks:
-            if p == (0, 0):
+        for pos, batch in self.renderer.rendered_chunks.items():
+            if pos == (0, 0):
                 break
         else:
             self.fail("Renderer didn't load chunk (0, 0)")
-        #for i in range(10):
-            #time.sleep(0.200)
-
-    def test_rendered_chunk(self):
-        self.log.info("test_rendered_chunk")
-        self.renderer.start()
-        self.renderer.request_chunk(0, 0)
-        time.sleep(1)
-        self.renderer.download_rendered_chunks()
-        self.assertTrue(len(self.renderer.rendered_chunks) == 1)

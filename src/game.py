@@ -70,10 +70,9 @@ class Game(pyglet.window.Window):
     self.world_generator.start()
     self.log.info("Created and started world generator.")
 
-    self.log.info("Creating and starting world renderer...")
+    self.log.info("Creating world renderer...")
     self.world_renderer = world_renderer.WorldRenderer(renderer_world_client, self.log)          # draws the world
-    self.world_renderer.start()
-    self.log.info("Created and started world renderer.")
+    self.log.info("Created world renderer.")
 
     pyglet.clock.set_fps_limit(variables.maximum_framerate)      # set the maximum framerate
     if config.Game.PreventSleep:
@@ -102,6 +101,7 @@ class Game(pyglet.window.Window):
     #self.world_render.load_block(b, [0, 0, 0]) # load and draw a block at 0,0,0
 
     self.fps_display = pyglet.clock.ClockDisplay(color=(1.0, 1.0, 1.0, 0.5))
+    self.log.info("Started.")
 
 
   def quit(self):
@@ -110,7 +110,6 @@ class Game(pyglet.window.Window):
     """
     self.world_generator.stop()
     self.world_server.stop()
-    self.world_renderer.stop()
 
 
   def prevent_sleep(self,dt):
@@ -154,6 +153,8 @@ class Game(pyglet.window.Window):
     #self.world_generator.request_chunk(*current_chunk)
     if not self.world_renderer.is_rendered(*current_chunk):
       self.world_renderer.render_chunk(*current_chunk)
+
+    print(current_chunk)
 
     pyglet.gl.glColor3f(255, 255, 255)
     pyglet.graphics.draw_indexed(4, pyglet.gl.GL_POLYGON,

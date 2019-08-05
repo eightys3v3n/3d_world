@@ -25,7 +25,7 @@ class Player:
 
 
 class WorldGenerator:
-    Distance = 4 # chunks
+    Distance = 2 # chunks
     Processes = 2 # Number of processes generating chunks in parallel.
     WaitTime = 1 # Specifies how long, in seconds, the generator slaves should wait for requests before checking if they should exit.
     RequestQueueSize = 256 # Number of chunks that can be requested before old requests are removed.
@@ -35,7 +35,7 @@ class WorldGenerator:
 
 
 class World:
-    VoxelSize = 16
+    VoxelSize = 16 # How many Pixels is a Voxel.
 
 
 class WorldRenderer:
