@@ -13,7 +13,6 @@ from threading  import Thread
 from time       import time
 from time       import sleep
 from noise      import pnoise2
-from variables  import window_width, window_height
 import variables
 import itertools
 
@@ -32,13 +31,14 @@ class Game(pyglet.window.Window):
     fh.setFormatter(ff)
     self.log.addHandler(h)
     self.log.addHandler(fh)
-    self.log.setLevel(logging.INFO)
+    self.log.setLevel(config.Game.LogLevel)
     self.log.info("Started logging.")
 
     # setup the window
     self.log.info("Initializing window...")
     super(Game, self).__init__()                     # initialize the window
-    self.set_size(window_width, window_height)       # set the window size
+    if config.Window.Width is not None and config.Window.Height is not None:
+      self.set_size(config.Window.Width, config.Window.Height)       # set the window size
     self.set_exclusive_mouse(False)                  # lock the cursor to this window
     self.set_vsync(variables.vsync)                  # turn off vsync so the framerate isn't limited at your refresh rate
     self.log.info("Initialized window.")
@@ -70,9 +70,10 @@ class Game(pyglet.window.Window):
     self.world_generator.start()
     self.log.info("Created and started world generator.")
 
-    self.log.info("Creating world renderer...")
+    self.log.info("Creating and starting world renderer...")
     self.world_renderer = world_renderer.WorldRenderer(renderer_world_client, self.log)          # draws the world
-    self.log.info("Created world renderer.")
+    self.world_renderer.start()
+    self.log.info("Created and started world renderer.")
 
     pyglet.clock.set_fps_limit(variables.maximum_framerate)      # set the maximum framerate
     if config.Game.PreventSleep:
@@ -94,13 +95,11 @@ class Game(pyglet.window.Window):
     self.debug = False     # whether to start the debugger next frame
 
 
-    for cx, cy in itertools.product(range(-5, 6), range(-5, 6)):
-      self.world_generator.request_chunk(cx, cy)
-    # render a reference block
-    #b = block.Block(type="grass")              # create a block
-    #self.world_render.load_block(b, [0, 0, 0]) # load and draw a block at 0,0,0
+    # Pre-generate a bunch of blocks and wait for them to finish so as to not clutter the logs.
+    #for cx, cy in itertools.product(range(-5, 6), range(-5, 6)):
+    #  self.world_generator.request_chunk(cx, cy)
 
-    self.fps_display = pyglet.clock.ClockDisplay(color=(1.0, 1.0, 1.0, 0.5))
+    self.fps_display = pyglet.clock.ClockDisplay(color=(1.0, 1.0, 1.0, 1.0))
     self.log.info("Started.")
 
 
@@ -110,6 +109,7 @@ class Game(pyglet.window.Window):
     """
     self.world_generator.stop()
     self.world_server.stop()
+    self.world_renderer.stop()
 
 
   def prevent_sleep(self,dt):
@@ -120,92 +120,21 @@ class Game(pyglet.window.Window):
     pass
 
 
-  def render_columns(self, x, y, x1, y1):
-    count = 0
-    positions = list(itertools.product(range(x, x1), range(y, y1)))
-    for a, b in positions:
-      if not self.world.column_exists(a,b):                       # if the column of blocks at (a,b) is generated
-        self.generator.request_column(a, b)
-        continue
-
-      column_pos = self.world.get_column_pos(a,b)
-
-      for pos in column_pos:
-        if not self.world.get_loaded(pos[0],pos[1],pos[2]): # don't draw if it is already loaded
-          if variables.renderer.blocks_drawn_per_frame is None or count <= variables.renderer.blocks_drawn_per_frame:           # stop drawing if count is more than the max blocks drawn per frame
-
-            # load a block; to be drawn from now until cleared.
-            self.world_render.load_block(self.world.get_block(*pos), [pos[0], pos[1], pos[2]])
-
-            # flag the block as currently loaded
-            self.world.set_loaded(pos[0],pos[1],pos[2],1)
-            self.loaded_blocks += 1                       # number of blocks currently loaded
-            count += 1                                    # number of blocks loaded this frame
-
-
-
-
   def generate_view(self):
     """
     Requests chunks in config.WorldGenerator.Distance to be generated.
     """
+
+    self.world_renderer.load_finished_chunks()
+
     current_chunk = self.world_client.abs_block_to_chunk_block(*self.player.standing_on())[0]
-    #self.world_generator.request_chunk(*current_chunk)
-    if not self.world_renderer.is_rendered(*current_chunk):
-      self.world_renderer.render_chunk(*current_chunk)
 
-    pyglet.gl.glColor3f(255, 255, 255)
-    pyglet.graphics.draw_indexed(4, pyglet.gl.GL_POLYGON,
-      [0, 1, 2, 3, 0],
-      ('v3f', (0, 0, 0,
-               0, 100, 0,
-               100, 100, 0,
-               100, 0, 0)),
-    )
-
-    # my computer glitches out if i render more than ~80,000 blocks.
-    # every one else should comment this if statement out.
-    #if self.loaded_blocks > 80000:
-    #  if not self.slow:
-    #    self.slow = True
-    #    self.player.player.position = [0.0,0.0,0.0]
-    #  print("loaded blocks",self.loaded_blocks)
-
-    #count = 0                               # keeps track of how many blocks were drawn this frame
-    #visible = self.player.get_visible()   # the square that should be visible to the player
-    #self.world_render.request_columns(*visible)
-    #self.world_renderer.draw(self)
-#    for a in range(x, x1):
-#      for b in range(y, y1):
-#        if self.world.column_exists(a,b):                       # if the column of blocks at (a,b) is generated
-#          column_pos = self.world.get_column_pos(a,b)
-#
-#          for pos in column_pos:
-#            if not self.world.get_loaded(pos[0],pos[1],pos[2]): # don't draw if it is already loaded
-#              if count <= variables.renderer.blocks_drawn_per_frame:           # stop drawing if count is more than the max blocks drawn per frame
-
-                # load a block; to be drawn from now until cleared.
-#                self.world_render.load_block(self.world.get_block(*pos), [pos[0], pos[1], pos[2]])
-
-                # flag the block as currently loaded
-#                self.world.set_loaded(pos[0],pos[1],pos[2],1)
-#                self.loaded_blocks += 1                       # number of blocks currently loaded
-#                count += 1                                    # number of blocks loaded this frame
-
-#        else:
-          # generate the column if it isn't already
-#          self.generator.request_column(a, b)
-
-    # unloads all blocks once max_blocks are rendered.
-    # again only to fix a bug on my computer, everyone else comment this out.
-    #if variables.debug.max_blocks is not None and self.loaded_blocks >= variables.debug.max_blocks:
-    #  print("unloading all loaded blocks to avoid graphics glitch on my pc")
-    #  raise NotImplemented()
-      # This feature was removed with the new world renderer
-      #self.world_render.unload_all()
-      #self.world.unload_all()
-      #self.loaded_blocks = 0
-    #self.world_render.load_blocks(blocks)
+    r = range(-config.WorldGenerator.Distance, config.WorldGenerator.Distance+1)
+    for offset in itertools.product(r, r):
+      cx = offset[0] + current_chunk[0]
+      cy = offset[1] + current_chunk[1]
+      self.world_generator.request_chunk(cx, cy)
+      self.world_renderer.request_chunk(cx, cy)
 
 
   def check_user_input(self):
@@ -249,13 +178,13 @@ class Game(pyglet.window.Window):
 
   def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
     if scroll_y < 0:
-      variables.move_speed[0] -= 0.1
-      variables.move_speed[1] -= 0.1
-      variables.move_speed[2] -= 0.1
+      variables.move_speed[0] -= 1
+      variables.move_speed[1] -= 1
+      variables.move_speed[2] -= 1
     elif scroll_y > 0:
-      variables.move_speed[0] += 0.1
-      variables.move_speed[1] += 0.1
-      variables.move_speed[2] += 0.1
+      variables.move_speed[0] += 1
+      variables.move_speed[1] += 1
+      variables.move_speed[2] += 1
 
     for i, m in enumerate(variables.move_speed):
       if m < 0:
@@ -301,6 +230,9 @@ class Game(pyglet.window.Window):
       else:
         config.WorldGenerator.Distance = 1
 
+  def on_resize(self, width, height):
+    config.Window.Width = width
+    config.Window.Height = height
 
   def on_draw(self):
     pyglet.clock.tick()

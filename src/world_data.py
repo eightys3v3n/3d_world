@@ -20,6 +20,7 @@ class WorldDataClient:
         self.pipe = pipe
         try:
             self.log = parent_log.getChild("WorldDataClient")
+            self.log.setLevel(config.WorldDataClient.LogLevel)
         except AttributeError as e:
             raise Exception("Invalid parent logger", e)
         #TODO add some performance metrics tracking the number of requests sent in a minute and time waiting for responses.
@@ -154,6 +155,7 @@ class WorldDataServer(mp.Process):
 
         #self.log = logging.getLogger('WorldDataServer')
         self.log = parent_log.getChild('WorldDataServer')
+        self.log.setLevel(config.WorldDataServer.LogLevel)
 
         #self.__handler__ = logging.StreamHandler()
 

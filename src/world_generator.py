@@ -19,6 +19,7 @@ class WorldGenerator:
         self.__running__ = mp.Value('b', True) # Used to stop any running threads.
         self.parent_log = parent_log
         self.log = self.parent_log.getChild("WorldGenerator")
+        self.log.setLevel(config.WorldGenerator.LogLevel)
         self.world_client = world_client # Used to access the world data
         self.chunks_to_generate = mp.Queue(config.WorldGenerator.RequestQueueSize) # A queue of chunks to generate.
         self.recently_requested = {} # dict[(cx, cy)] = time.time(); A list of chunks that have been recently requested and the time requested. These won't be requested again until removed.

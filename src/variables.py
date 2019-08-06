@@ -43,7 +43,7 @@ mouse_sensitivity = [.2,.2]
 generate_distance = 10
 
 move_speed    = [4, 4, 4]
-max_fall_speed    = 30
+max_fall_speed    = 1000
 player_fall_acc   = Position(x=0.0, y=0.0, z=-5.0)
 physics_updates   = 1/30.0
 

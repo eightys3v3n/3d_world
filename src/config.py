@@ -1,4 +1,5 @@
 from enum import Enum, unique
+import logging
 
 
 LogFormat = '%(asctime)s: %(processName)-20s:%(filename)-20s:%(funcName)-20s[%(lineno)-3s] %(levelname)-8s %(message)s'
@@ -12,20 +13,28 @@ class Debug:
         PrintPositionOnChange = False
 
 
+class Window:
+    Width = None
+    Height = None
+
+
 class Game:
     PreventSleep = True
+    LogLevel = logging.NOTSET
 
 
 class Player:
     InitialPosition = [0.0, 0.0, 0.0]
     InitialHeading = [90.0, 0.0, 0.0]
     Height = 2 # blocks tall
+    FOV = 70.0
     MoveSpeed = [4, 4, 4]
     MaxFallSpeed = 30
 
 
 class WorldGenerator:
-    Distance = 2 # chunks
+    LogLevel = logging.WARNING
+    Distance = 1 # chunks
     Processes = 2 # Number of processes generating chunks in parallel.
     WaitTime = 1 # Specifies how long, in seconds, the generator slaves should wait for requests before checking if they should exit.
     RequestQueueSize = 256 # Number of chunks that can be requested before old requests are removed.
@@ -39,17 +48,25 @@ class World:
 
 
 class WorldRenderer:
+    LogLevel = logging.INFO
     MaxQueuedChunks = 256
-    RendererWaitTime = 1 # Specifies how long, in seconds, the renderer should wait for requests before checking if it should exit.
+    MaxFinishedChunks = 1 # This should be low enough that there is no noticable delay when drawing. It will then stop the renderer for that frame. It is essentially the main bottle neck in speed of rendering chunks, how many can we deal with on the main thread in a single frame without stuttering issues.
+    WaitTime = 1 # Specifies how long, in seconds, the renderer should wait for requests before checking if it should exit.
+    RecentlyRequestedTimeout = 2 # How long (seconds) to wait until a chunk can be requested to be rendered again.
 
 
 class WorldDataServer:
+    LogLevel = logging.WARNING
     MainConnectionName = 'Main'
     RandomIDLength = 5
     ConnectionWaitTime = 1 # Specifies how long, in seconds, the server should wait for requests before checking if it should exit.
     ChunkSize = 16
     ChunkHexLength = 6 # This is 1-512. It trims a SHA 512 hash to this length to compare and print chunks.
     WorldHeight = 8
+
+
+class WorldDataClient:
+    LogLevel = logging.WARNING
 
 
 @unique
