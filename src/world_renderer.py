@@ -71,6 +71,7 @@ class WorldRenderer(mp.Process):
 
 
     def render_chunk(self, cx, cy):
+        raise Exception("Can't be used with a multiprocess structure")
         if not self.world_client.is_generated(cx, cy):
             self.log.info("Requested chunk isn't generated ({}, {})".format(cx, cy))
             return

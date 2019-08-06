@@ -50,7 +50,7 @@ class World:
 class WorldRenderer:
     LogLevel = logging.INFO
     MaxQueuedChunks = 256
-    MaxFinishedChunks = 1 # This should be low enough that there is no noticable delay when drawing. It will then stop the renderer for that frame. It is essentially the main bottle neck in speed of rendering chunks, how many can we deal with on the main thread in a single frame without stuttering issues.
+    MaxFinishedChunks = 16 # This should be low enough that there is no noticable delay when drawing. It will then stop the renderer for that frame. It is essentially the main bottle neck in speed of rendering chunks, how many can we deal with on the main thread in a single frame without stuttering issues.
     WaitTime = 1 # Specifies how long, in seconds, the renderer should wait for requests before checking if it should exit.
     RecentlyRequestedTimeout = 2 # How long (seconds) to wait until a chunk can be requested to be rendered again.
 
