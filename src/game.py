@@ -102,6 +102,8 @@ class Game(pyglet.window.Window):
     self.fps_display = pyglet.clock.ClockDisplay(color=(1.0, 1.0, 1.0, 1.0))
     self.log.info("Started.")
 
+    self.times = []
+
 
   def quit(self):
     """
@@ -110,6 +112,9 @@ class Game(pyglet.window.Window):
     self.world_generator.stop()
     self.world_server.stop()
     self.world_renderer.stop()
+
+    average = round(sum(self.times) / len(self.times), 5)
+    print("Average load_finished_chunks time: {}".format(average))
 
 
   def prevent_sleep(self,dt):
@@ -125,7 +130,13 @@ class Game(pyglet.window.Window):
     Requests chunks in config.WorldGenerator.Distance to be generated.
     """
 
+    before = time()
     self.world_renderer.load_finished_chunks()
+    after = time()
+    res = round(after - before, 5)
+    if res >= 0.0005:
+      print("Took {:.4} seconds to load_finished_chunks.".format(round(after - before, 4)))
+      self.times.append(res)
 
     current_chunk = self.world_client.abs_block_to_chunk_block(*self.player.standing_on())[0]
 

@@ -126,7 +126,15 @@ class WorldRenderer(mp.Process):
                 (cx, cy), data = self.finished_chunks.get(block=False)
                 batch = pyglet.graphics.Batch()
                 for block_data in data:
-                    batch.add_indexed(*block_data)
+                    #batch.add_indexed(*block_data)
+                    block_data = [
+                        block_data[0],
+                        block_data[1],
+                        block_data[2],
+                        block_data[4],
+                        block_data[5],
+                        ]
+                    batch.add(*block_data)
                 self.rendered_chunks[(cx, cy)] = batch
                 loaded += 1
             except queue.Empty: break
