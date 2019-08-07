@@ -1,1 +1,1 @@
-clear; rm main.log; python main.py
+clear; rm main.log; python -O main.py

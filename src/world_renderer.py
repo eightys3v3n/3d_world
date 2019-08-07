@@ -124,19 +124,21 @@ class WorldRenderer(mp.Process):
         while True:
             try:
                 (cx, cy), data = self.finished_chunks.get(block=False)
-                batch = pyglet.graphics.Batch()
-                for block_data in data:
-                    #batch.add_indexed(*block_data)
-                    block_data = [
-                        block_data[0],
-                        block_data[1],
-                        block_data[2],
-                        block_data[4],
-                        block_data[5],
+                if (cx, cy) not in self.rendered_chunks:
+                    batch = pyglet.graphics.Batch()
+
+                    for block_data in data:
+                        #batch.add_indexed(*block_data) # twice as long to do over .add
+                        block_data = [
+                            block_data[0],
+                            block_data[1],
+                            block_data[2],
+                            block_data[4],
+                            block_data[5],
                         ]
-                    batch.add(*block_data)
-                self.rendered_chunks[(cx, cy)] = batch
-                loaded += 1
+                        batch.add(*block_data)
+                    self.rendered_chunks[(cx, cy)] = batch
+                    loaded += 1
             except queue.Empty: break
         if loaded > 0:
             self.log.info("Loaded {} finished chunks.".format(loaded))

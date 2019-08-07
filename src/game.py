@@ -6,9 +6,9 @@ import player
 import world_generator
 import world_renderer
 import block
+import math
 import pdb
 from pyglet.gl  import *
-from math       import floor
 from threading  import Thread
 from time       import time
 from time       import sleep
@@ -24,6 +24,7 @@ class Game(pyglet.window.Window):
   def __init__(self):
     self.log = logging.getLogger()
     h = logging.StreamHandler()
+    h.setLevel(config.Game.ConsoleLogLevel)
     fh = logging.FileHandler(config.LogFile)
     f = logging.Formatter(config.LogFormat)
     ff = logging.Formatter(config.LogFormat)
@@ -31,7 +32,6 @@ class Game(pyglet.window.Window):
     fh.setFormatter(ff)
     self.log.addHandler(h)
     self.log.addHandler(fh)
-    self.log.setLevel(config.Game.LogLevel)
     self.log.info("Started logging.")
 
     # setup the window
@@ -103,6 +103,8 @@ class Game(pyglet.window.Window):
     self.log.info("Started.")
 
     self.times = []
+    if config.Game.FPS_SPAM:
+      self.fps = {}
 
 
   def quit(self):
@@ -113,8 +115,9 @@ class Game(pyglet.window.Window):
     self.world_server.stop()
     self.world_renderer.stop()
 
-    average = round(sum(self.times) / len(self.times), 5)
-    print("Average load_finished_chunks time: {}".format(average))
+    if len(self.times) > 0:
+      average = round(sum(self.times) / len(self.times), 5)
+      print("Average load_finished_chunks time: {}".format(average))
 
 
   def prevent_sleep(self,dt):
@@ -130,13 +133,17 @@ class Game(pyglet.window.Window):
     Requests chunks in config.WorldGenerator.Distance to be generated.
     """
 
-    before = time()
+    if __debug__ and config.Game.TimeRenderingChunks:
+      before = time()
+
     self.world_renderer.load_finished_chunks()
-    after = time()
-    res = round(after - before, 5)
-    if res >= 0.0005:
-      print("Took {:.4} seconds to load_finished_chunks.".format(round(after - before, 4)))
-      self.times.append(res)
+
+    if __debug__ and config.Game.TimeRenderingChunks:
+      after = time()
+      res = round(after - before, 5)
+      if res >= 0.0005:
+        print("Took {:.4} seconds to load_finished_chunks.".format(round(after - before, 4)))
+        self.times.append(res)
 
     current_chunk = self.world_client.abs_block_to_chunk_block(*self.player.standing_on())[0]
 
@@ -246,9 +253,23 @@ class Game(pyglet.window.Window):
     config.Window.Height = height
 
   def on_draw(self):
-    pyglet.clock.tick()
+    dt = pyglet.clock.tick()
 
-    if self.debug:
+
+    if __debug__ and config.Game.FPS_SPAM:
+      offset = 10000
+      if dt > 0:
+        self.fps[round(time()*offset)] = 1.0 / dt / 100
+        #self.fps.append(pyglet.clock.get_fps()) # actually calculating the framerate seems to be more accurate.
+        while time() - list(self.fps.keys())[0]/offset >= config.FPS_SPAM_SPAN: del self.fps[list(self.fps.keys())[0]]
+        if len(self.fps) > 0:
+          avgerage = round(sum(self.fps.values()) / len(self.fps), 2)
+          print("Average FPS: {}".format(avgerage))
+          minimum = round(min(self.fps.values()), 2)
+          print("Minimum FPS: {}".format(minimum))
+
+
+    if __debug__ and self.debug:
       self.debug = False
       pdb.set_trace()
 
@@ -257,8 +278,8 @@ class Game(pyglet.window.Window):
     self.clear()
     #glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST)
 
-    self.generate_view()
     self.player.draw_perspective()
+    self.generate_view()
     self.world_renderer.draw()
 
     glTranslatef(0, 1000, 0)
