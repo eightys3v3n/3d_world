@@ -4,3 +4,5 @@ Add some kind of interface for timing all manner of functions. Then make all the
 
 Break down chunk rendering further so it can be limited by number of blocks per frame. Ideally the config file would specify "only render 200 blocks per frame" to avoid the current stuttering.
 This requires creating some kind of queue on the main thread to save chunk data but not use it until next frame.
+
+Make window resizable.

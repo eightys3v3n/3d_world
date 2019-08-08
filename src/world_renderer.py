@@ -18,6 +18,7 @@ class WorldRenderer(mp.Process):
         self.rendered_chunks = {} # (cx, cy): pyglet.graphics.Batch to draw
         self.recently_requested = {} # (cx, cy): time requested
         self.finished_chunks = mp.Queue(maxsize=config.WorldRenderer.MaxFinishedChunks)
+        self.rendering_chunk = []
         self.__running__ = mp.Value('b', False)
 
 
@@ -66,8 +67,11 @@ class WorldRenderer(mp.Process):
                 self.log.debug("Ignoring chunk ({}, {})".format(cx, cy))
                 return
         self.log.info("Requesting chunk ({}, {})".format(cx, cy))
-        self.recently_requested[(cx, cy)] = time.time()
-        self.chunks_to_render.put((cx, cy))
+        try:
+            self.chunks_to_render.put((cx, cy))
+            self.recently_requested[(cx, cy)] = time.time()
+        except queue.Full:
+            self.log.warning("Couldn't request chunk because queue is full.")
 
 
     def render_chunk(self, cx, cy):
