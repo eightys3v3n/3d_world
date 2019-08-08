@@ -7,6 +7,12 @@ import config, world_data
 import time
 
 
+class RenderedBatch:
+    def __init__(self):
+        self.batch = pyglet.graphics.Batch()
+        self.complete = False
+
+
 class WorldRenderer(mp.Process):
     def __init__(self, world_client, parent_log):
         super(WorldRenderer, self).__init__()
@@ -18,7 +24,7 @@ class WorldRenderer(mp.Process):
         self.rendered_chunks = {} # (cx, cy): pyglet.graphics.Batch to draw
         self.recently_requested = {} # (cx, cy): time requested
         self.finished_chunks = mp.Queue(maxsize=config.WorldRenderer.MaxFinishedChunks)
-        self.rendering_chunk = []
+        self.rendering_chunk = None # ((cx, cy), render_data)
         self.__running__ = mp.Value('b', False)
 
 
@@ -33,25 +39,16 @@ class WorldRenderer(mp.Process):
             self.join()
 
 
-    def render_block_to_batch(self, pos, block, batch):
-        indexes, vertices = self.block_vertices(*pos, block)
-        colours = self.block_colour(block).value
-
-        data = (len(indexes), GL_QUADS, None, indexes, ("v3f", vertices), ("c3B", colours))
-        try:
-            assert len(vertices) == len(colours) == 72, "{} != {}".format(len(vertices), len(colours))
-            batch.add_indexed(*data)
-        except Exception  as e:
-            self.log.error(e)
-            self.log.debug(data)
-            raise Exception(e)
-
-
     def render_block_to_data(self, pos, block, batch_data):
+        """Calculates the vertice data and colour for a given Block object and it's absolute position in the world.
+        Adds this data to the batch_Data array."""
         indexes, vertices = self.block_vertices(*pos, block)
         colours = self.block_colour(block).value
 
-        data = (len(indexes), GL_QUADS, None, indexes, ("v3f", vertices), ("c3B", colours))
+        if config.WorldRenderer.BatchAddMode == config.WorldRenderer.BatchAddModes.Indexed:
+            data = (len(indexes), GL_QUADS, None, indexes, ("v3f", vertices), ("c3B", colours))
+        elif config.WorldRenderer.BatchAddMode == config.WorldRenderer.BatchAddModes.Nonindexed:
+            data = (len(indexes), GL_QUADS, None, ("v3f", vertices), ("c3B", colours))
         batch_data.append(data)
 
 
@@ -61,11 +58,17 @@ class WorldRenderer(mp.Process):
 
 
     def request_chunk(self, cx, cy, force=False):
+        """Put in a request for a chunk to be rendered.
+        Parameters:
+            force (boolean): False means never rerender a chunk."""
         if not force and (cx, cy) in self.recently_requested:
             time_since = time.time() - self.recently_requested[(cx, cy)]
             if time_since < config.WorldRenderer.RecentlyRequestedTimeout:
-                self.log.debug("Ignoring chunk ({}, {})".format(cx, cy))
+                self.log.debug("Skipping already rendered chunk ({}, {})".format(cx, cy))
                 return
+        if (cx, cy) in self.rendered_chunks and not force:
+            return
+
         self.log.info("Requesting chunk ({}, {})".format(cx, cy))
         try:
             self.chunks_to_render.put((cx, cy))
@@ -74,35 +77,14 @@ class WorldRenderer(mp.Process):
             self.log.warning("Couldn't request chunk because queue is full.")
 
 
-    def render_chunk(self, cx, cy):
-        raise Exception("Can't be used with a multiprocess structure")
-        if not self.world_client.is_generated(cx, cy):
-            self.log.info("Requested chunk isn't generated ({}, {})".format(cx, cy))
-            return
-
-        batch = pyglet.graphics.Batch()
-        chunk = self.world_client.get_chunk(cx, cy)
-        self.log.info("Rendering chunk ({}, {})".format(cx, cy))
-        if config.WorldRequestData.ChunkData not in chunk:
-            self.log.warning("Didn't receive chunk data, queuing for later.")
-            self.log.debug("Actually received: {}".format(chunk))
-            self.request_chunk(cx, cy)
-            return
-        chunk = chunk[config.WorldRequestData.ChunkData]
-        for pos, block in chunk:
-            pos = self.world_client.chunk_block_to_abs_block(cx, cy, *pos)
-            self.log.debug("Rendering block ({}, {}, {}) of type {}".format(*pos, block))
-            self.render_block_to_batch(pos, block, batch)
-        self.log.debug("Rendered chunk ({}, {})".format(cx, cy))
-        self.rendered_chunks[(cx, cy)] = batch
-
-
-    def render_chunk_data(self, cx, cy):
+    def calc_chunk_render_data(self, cx, cy):
+        """Get all the data necessary to create all the rendering data (vertices, colours, the chunk data...).
+        Add that data to the finished_chunks queue so the main thread can draw it."""
         if self.world_client.is_generated(cx, cy):
             batch_data = []
 
             chunk = self.world_client.get_chunk(cx, cy)
-            self.log.debug("Rendering chunk ({}, {})".format(cx, cy))
+            self.log.debug("Calculating render data for chunk ({}, {})".format(cx, cy))
             if config.WorldRequestData.ChunkData not in chunk:
                 self.log.warning("Didn't receive chunk data, queuing for later.")
                 self.log.debug("Actually received: {}".format(chunk))
@@ -112,44 +94,79 @@ class WorldRenderer(mp.Process):
 
             for pos, block in chunk:
                 pos = self.world_client.chunk_block_to_abs_block(cx, cy, *pos)
-                self.log.debug("Rendering block ({}, {}, {}) of type {}".format(*pos, block))
                 self.render_block_to_data(pos, block, batch_data)
-            self.log.debug("Rendered chunk ({}, {})".format(cx, cy))
-            self.finished_chunks.put(((cx, cy), batch_data))
+
+            self.finished_chunks.put([(cx, cy), batch_data])
         else:
             self.log.info("Requested chunk isn't generated ({}, {})".format(cx, cy))
 
 
-    def load_finished_chunks(self):
-        """Create batches for all the chunks whose data was asynchronously calculated.
-        Then add those batches to the list of batches to be drawn."""
-        loaded = 0
+    def render_block(self, render_data, batch):
+        """Add the given render_data to the given RenderedBatch object."""
+        batch.batch.add(*render_data)
 
-        while True:
+
+    def continue_rendering(self, max_blocks):
+        """Try to resume rendering the rendering_chunk, but only draw max_blocks.
+
+        Returns the number of blocks rendered."""
+        rendered_blocks = 0
+
+        if self.rendering_chunk is None: return 0
+
+        if self.rendering_chunk[0] in self.rendered_chunks:
+            batch = self.rendered_chunks[self.rendering_chunk[0]]
+            if batch.complete: # Delete the previous batch and start creating a new one. (re-render a chunk)
+                batch = RenderedBatch()
+                self.rendered_chunks[self.rendering_chunk[0]] = batch
+                self.log.debug("Creating new batch for chunk ({}, {}).".format(*self.rendering_chunk[0]))
+            else:
+                self.log.debug("Adding to previous batch for chunk ({}, {}).".format(*self.rendering_chunk[0]))
+        else:
+            batch = RenderedBatch()
+            self.rendered_chunks[self.rendering_chunk[0]] = batch
+            self.log.debug("Creating new batch for chunk ({}, {}).".format(*self.rendering_chunk[0]))
+
+        for block_render_data in self.rendering_chunk[1]:
+            if rendered_blocks >= max_blocks:
+                batch.complete = False
+                self.log.debug("Leaving chunk ({}, {}) incomplete.".format(*self.rendering_chunk[0]))
+                break
+
+            self.render_block(block_render_data, batch)
+            self.rendering_chunk[1] = self.rendering_chunk[1][1:]
+            rendered_blocks += 1
+        else:
+            batch.complete = True
+            self.log.debug("Finished rendering chunk ({}, {}).".format(*self.rendering_chunk[0]))
+
+        if len(self.rendering_chunk[1]) == 0:
+            self.rendering_chunk = None
+
+        return rendered_blocks
+
+
+    def render_queued(self):
+        """Render some of the pre_calculated chunks onto the screen by putting them into a batch to be drawn.
+        Tries to finish the incompletely rendered chunk before getting another pre-calculated chunk."""
+        if self.finished_chunks.full():
+            for i in range(config.WorldRenderer.TrashChunksOnFullFinishedQueue):
+                try:
+                    self.finished_chunks.get(block=False)
+                except queue.Empty: break
+
+        rendered_blocks = self.continue_rendering(config.WorldRenderer.MaxBlocksPerFrame)
+
+        if rendered_blocks < config.WorldRenderer.MaxBlocksPerFrame:
             try:
-                (cx, cy), data = self.finished_chunks.get(block=False)
-                if (cx, cy) not in self.rendered_chunks:
-                    batch = pyglet.graphics.Batch()
-
-                    for block_data in data:
-                        #batch.add_indexed(*block_data) # twice as long to do over .add
-                        block_data = [
-                            block_data[0],
-                            block_data[1],
-                            block_data[2],
-                            block_data[4],
-                            block_data[5],
-                        ]
-                        batch.add(*block_data)
-                    self.rendered_chunks[(cx, cy)] = batch
-                    loaded += 1
-            except queue.Empty: break
-        if loaded > 0:
-            self.log.info("Loaded {} finished chunks.".format(loaded))
+                self.rendering_chunk = self.finished_chunks.get(block=False)
+            except queue.Empty: pass
+            self.continue_rendering(config.WorldRenderer.MaxBlocksPerFrame - rendered_blocks)
 
 
     def timeout_recently_requested(self):
-        """Removes all recently made requests that are older than their timeout."""
+        """Removes all recently made requests that are older than config.WorldRenderer.RecentlyRequestedTimeout.
+        This function needs to be called to prevent the recently_requested array from growing forever."""
         for (cx, cy), t in self.recently_requested.items():
             if time.time() - t >= config.WorldRenderer.RecentlyRequestedTimeout:
                 del self.recently_requested[(cx, cy)]
@@ -161,15 +178,16 @@ class WorldRenderer(mp.Process):
         glLoadIdentity()
         for (cx, cy), batch in self.rendered_chunks.items():
             #self.log.info("Drawing chunk ({}, {})".format(cx, cy))
-            batch.draw()
+            batch.batch.draw()
 
 
     def run(self):
+        """What the renderer process runs in the background."""
         while self.__running__.value:
             try:
                 cx, cy = self.chunks_to_render.get(timeout=config.WorldRenderer.WaitTime)
                 self.log.info("Received chunk render request for ({}, {})".format(cx, cy))
-                self.render_chunk_data(cx, cy)
+                self.calc_chunk_render_data(cx, cy)
             except queue.Empty: pass
             self.timeout_recently_requested()
 
@@ -246,7 +264,7 @@ class TestWorldRenderer(unittest.TestCase):
         pass
 
 
-    def test_render_chunk(self):
+    def DISABLED_test_render_chunk(self):
         return
         self.renderer.render_chunk(0, 0)
 

@@ -8,6 +8,11 @@ LogFile = 'main.log'
 
 
 class Debug:
+    class Game:
+        FPS_SPAM = True # This will track the current FPS for Every Frame, then print the running average over the last N seconds.
+        FPS_SPAM_SPAN = 3 # How many seconds of FPS readings every frame to keep.
+        TimeRenderingChunks = False # Whether to print how long it took to load the finished chunks onto the screen. This times the current largest cause of stuttering.
+
     class Player:
         PrintHeadingOnChange = False
         PrintPositionOnChange = False
@@ -20,15 +25,7 @@ class Window:
 
 class Game:
     PreventSleep = True
-    ConsoleLogLevel = logging.WARNING # This doesn't work for some reason. Need to do more reading on the man page.
-    FPS_SPAM = False # This will track the current FPS for Every Frame, then print the running average over the last N seconds.
-    FPS_SPAM_SPAN = 8 # How many seconds of FPS readings every frame to keep.
-    TimeRenderingChunks = True # Whether to print how long it took to load the finished chunks onto the screen. This times the current largest cause of stuttering.
-
-
-# Turn off stuff if the program is not running in Debug mode.
-Game.FPS_SPAM = Game.FPS_SPAM if __debug__ else False
-Game.TimeRenderingChunks = Game.TimeRenderingChunks if __debug__ else False
+    ConsoleLogLevel = logging.INFO # This doesn't work for some reason. Need to do more reading on the man page.
 
 
 class Player:
@@ -56,11 +53,18 @@ class World:
 
 
 class WorldRenderer:
+    class BatchAddModes(Enum):
+        Indexed = 'indexed' # Slower but I think it draws the points in order?
+        Nonindexed = 'nonindexed' # Faster but doesn't draw them in order?
+
     LogLevel = logging.INFO
     MaxQueuedChunks = 256
     MaxFinishedChunks = 16 # This should be low enough that there is no noticable delay when drawing. It will then stop the renderer for that frame. It is essentially the main bottle neck in speed of rendering chunks, how many can we deal with on the main thread in a single frame without stuttering issues.
     WaitTime = 1 # Specifies how long, in seconds, the renderer should wait for requests before checking if it should exit.
     RecentlyRequestedTimeout = 2 # How long (seconds) to wait until a chunk can be requested to be rendered again.
+    TrashChunksOnFullFinishedQueue = 1 # Throw out the data for this many chunks if the finished data queue is full. This is intended to ensure that chunks being rendered are not too old and unneeded.
+    MaxBlocksPerFrame = 200 # Max number of blocks to add to the pyglet batch every frame. This results in a chunk being rendered over many frames to stop stuttering issues.
+    BatchAddMode = BatchAddModes.Nonindexed # Which call to use when adding to pyglet.graphics.Batch.
 
 
 class WorldDataServer:

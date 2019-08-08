@@ -4,7 +4,6 @@ import config
 import world_data
 import player
 import world_generator
-import world_renderer
 import block
 import math
 import pdb
@@ -13,6 +12,7 @@ from threading  import Thread
 from time       import time
 from time       import sleep
 from noise      import pnoise2
+from world_renderer import WorldRenderer
 import variables
 import itertools
 
@@ -71,7 +71,7 @@ class Game(pyglet.window.Window):
     self.log.info("Created and started world generator.")
 
     self.log.info("Creating and starting world renderer...")
-    self.world_renderer = world_renderer.WorldRenderer(renderer_world_client, self.log)          # draws the world
+    self.world_renderer = WorldRenderer(renderer_world_client, self.log)          # draws the world
     self.world_renderer.start()
     self.log.info("Created and started world renderer.")
 
@@ -103,7 +103,7 @@ class Game(pyglet.window.Window):
     self.log.info("Started.")
 
     self.times = []
-    if config.Game.FPS_SPAM:
+    if config.Debug.Game.FPS_SPAM:
       self.fps = {}
 
 
@@ -133,12 +133,12 @@ class Game(pyglet.window.Window):
     Requests chunks in config.WorldGenerator.Distance to be generated.
     """
 
-    if __debug__ and config.Game.TimeRenderingChunks:
+    if config.Debug.Game.TimeRenderingChunks:
       before = time()
 
-    self.world_renderer.load_finished_chunks()
+    self.world_renderer.render_queued()
 
-    if __debug__ and config.Game.TimeRenderingChunks:
+    if config.Debug.Game.TimeRenderingChunks:
       after = time()
       res = round(after - before, 5)
       if res >= 0.0005:
@@ -147,6 +147,7 @@ class Game(pyglet.window.Window):
 
     current_chunk = self.world_client.abs_block_to_chunk_block(*self.player.standing_on())[0]
 
+    # Generate all the chunks in the generation distance.
     r = range(-config.WorldGenerator.Distance, config.WorldGenerator.Distance+1)
     for offset in itertools.product(r, r):
       cx = offset[0] + current_chunk[0]
@@ -234,8 +235,14 @@ class Game(pyglet.window.Window):
       self.focus = False
       self.set_exclusive_mouse(False)
 
-    elif symbol == pyglet.window.key.G:
-      self.world_renderer.rendered_chunks = {}
+    elif symbol == pyglet.window.key.PLUS:
+      config.WorldRenderer.MaxBlocksPerFrame += 10
+      print("MaxBlocksPerFrame: {}".format(config.WorldRenderer.MaxBlocksPerFrame))
+
+    elif symbol == pyglet.window.key.MINUS:
+      config.WorldRenderer.MaxBlocksPerFrame = max(0, config.WorldRenderer.MaxBlocksPerFrame - 10)
+      print("MaxBlocksPerFrame: {}".format(config.WorldRenderer.MaxBlocksPerFrame))
+
 
     elif symbol == pyglet.window.key.D and modifiers & pyglet.window.key.MOD_ALT:
       self.set_exclusive_mouse(False)
@@ -256,12 +263,12 @@ class Game(pyglet.window.Window):
     dt = pyglet.clock.tick()
 
 
-    if __debug__ and config.Game.FPS_SPAM:
+    if __debug__ and config.Debug.Game.FPS_SPAM:
       offset = 10000
       if dt > 0:
         self.fps[round(time()*offset)] = 1.0 / dt / 100
         #self.fps.append(pyglet.clock.get_fps()) # actually calculating the framerate seems to be more accurate.
-        while time() - list(self.fps.keys())[0]/offset >= config.FPS_SPAM_SPAN: del self.fps[list(self.fps.keys())[0]]
+        while time() - list(self.fps.keys())[0]/offset >= config.Debug.Game.FPS_SPAM_SPAN: del self.fps[list(self.fps.keys())[0]]
         if len(self.fps) > 0:
           avgerage = round(sum(self.fps.values()) / len(self.fps), 2)
           print("Average FPS: {}".format(avgerage))

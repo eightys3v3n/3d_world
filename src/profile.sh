@@ -1,2 +1,1 @@
-./run.sh
-python -m snakeviz main.prof
+./run.sh && python -m snakeviz main.prof
