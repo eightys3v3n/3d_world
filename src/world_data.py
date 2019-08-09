@@ -259,9 +259,9 @@ class WorldDataServer(mp.Process):
                 response[0] = config.WorldRequests.FailedReq
 
         elif req[0] == config.WorldRequests.SetChunkReq:
-            self.log.info("Received Set Chunk request from client '{}'".format(cli_name))
-
             cx, cy = req[1][config.WorldRequestData.ChunkPos]
+
+            self.log.info("Received Set Chunk request from client '{}' for ({}, {})".format(cli_name, cx, cy))
             chunk_data = req[1][config.WorldRequestData.ChunkData]
 
             try:
@@ -287,9 +287,9 @@ class WorldDataServer(mp.Process):
                 response[0] = config.WorldRequests.FailedReq
 
         elif req[0] == config.WorldRequests.InitChunkReq:
-            self.log.info("Received Init Chunk request from client '{}'".format(cli_name))
-
             cx, cy = req[1][config.WorldRequestData.ChunkPos]
+
+            self.log.info("Received Init Chunk request from client '{}' for ({}, {})".format(cli_name, cx ,cy))
             if not self.get_chunk(cx, cy).is_generated():
                 chunk_data = req[1][config.WorldRequestData.ChunkData]
 

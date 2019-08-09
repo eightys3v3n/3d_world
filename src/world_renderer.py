@@ -69,12 +69,12 @@ class WorldRenderer(mp.Process):
         if (cx, cy) in self.rendered_chunks and not force:
             return
 
-        self.log.info("Requesting chunk ({}, {})".format(cx, cy))
+        self.log.debug("Requesting chunk ({}, {})".format(cx, cy))
         try:
-            self.chunks_to_render.put((cx, cy))
+            self.chunks_to_render.put((cx, cy), block=False)
             self.recently_requested[(cx, cy)] = time.time()
         except queue.Full:
-            self.log.warning("Couldn't request chunk because queue is full.")
+            self.log.warning("Dropping request for chunk ({}, {}) because render queue is full.".format(cx, cy))
 
 
     def calc_chunk_render_data(self, cx, cy):
@@ -186,7 +186,7 @@ class WorldRenderer(mp.Process):
         while self.__running__.value:
             try:
                 cx, cy = self.chunks_to_render.get(timeout=config.WorldRenderer.WaitTime)
-                self.log.info("Received chunk render request for ({}, {})".format(cx, cy))
+                self.log.debug("Received chunk render request for ({}, {})".format(cx, cy))
                 self.calc_chunk_render_data(cx, cy)
             except queue.Empty: pass
             self.timeout_recently_requested()

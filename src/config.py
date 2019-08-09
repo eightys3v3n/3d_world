@@ -1,6 +1,7 @@
 from enum import Enum, unique
 import logging
-
+import random
+0
 
 LogFormat = '%(asctime)s: %(processName)-20s:%(filename)-20s:%(funcName)-20s[%(lineno)-3s] %(levelname)-8s %(message)s'
 TestingLog = 'test.log'
@@ -9,7 +10,7 @@ LogFile = 'main.log'
 
 class Debug:
     class Game:
-        FPS_SPAM = True # This will track the current FPS for Every Frame, then print the running average over the last N seconds.
+        FPS_SPAM = False # This will track the current FPS for Every Frame, then print the running average over the last N seconds.
         FPS_SPAM_SPAN = 3 # How many seconds of FPS readings every frame to keep.
         TimeRenderingChunks = False # Whether to print how long it took to load the finished chunks onto the screen. This times the current largest cause of stuttering.
 
@@ -23,9 +24,14 @@ class Window:
     Height = None
 
 
+class OpenGL:
+    pass
+
 class Game:
+    ViewDistance = 4  # radius of chunks to render and generate. Not the actual visible distance
+    InitialGeneration = 10 # radius of chunks around (0, 0) to render when starting the game.
     PreventSleep = True
-    ConsoleLogLevel = logging.INFO # This doesn't work for some reason. Need to do more reading on the man page.
+    ConsoleLogLevel = logging.ERROR # This doesn't work for some reason. Need to do more reading on the man page.
 
 
 class Player:
@@ -39,13 +45,15 @@ class Player:
 
 class WorldGenerator:
     LogLevel = logging.WARNING
-    Distance = 1 # chunks
+    Distance = Game.ViewDistance + 1 # radius of chunks to generate around the player.
+    InitialDistance = Game.InitialGeneration # radius of chunks to generate when starting the game.
     Processes = 2 # Number of processes generating chunks in parallel.
     WaitTime = 1 # Specifies how long, in seconds, the generator slaves should wait for requests before checking if they should exit.
-    RequestQueueSize = 256 # Number of chunks that can be requested before old requests are removed.
+    RequestQueueSize = 1024 # Number of chunks that can be requested before old requests are removed.
     RecentlyRequested = 10 # Number of seconds to store recently requested chunks. This is used to avoid two GenerationSlaves generating the same chunk more than once.
     GarbageCollectionInterval = 1.0 # Once every how many seconds should we clear out the recently requested chunk list.
-    MaxRecentChunksStored = 1024 # How many chunks should be stored if the list isn't being cleared quick enough?
+    MaxRecentChunksStored = 4096 # How many chunks should be stored if the list isn't being cleared quick enough?
+    Seed = random.random()
 
 
 class World:
@@ -57,13 +65,15 @@ class WorldRenderer:
         Indexed = 'indexed' # Slower but I think it draws the points in order?
         Nonindexed = 'nonindexed' # Faster but doesn't draw them in order?
 
-    LogLevel = logging.INFO
-    MaxQueuedChunks = 256
+    Distance = Game.ViewDistance # Radius of chunks to render around the player.
+    InitialDistance = Game.InitialGeneration
+    LogLevel = logging.WARNING
+    MaxQueuedChunks = 1024
     MaxFinishedChunks = 16 # This should be low enough that there is no noticable delay when drawing. It will then stop the renderer for that frame. It is essentially the main bottle neck in speed of rendering chunks, how many can we deal with on the main thread in a single frame without stuttering issues.
     WaitTime = 1 # Specifies how long, in seconds, the renderer should wait for requests before checking if it should exit.
     RecentlyRequestedTimeout = 2 # How long (seconds) to wait until a chunk can be requested to be rendered again.
     TrashChunksOnFullFinishedQueue = 1 # Throw out the data for this many chunks if the finished data queue is full. This is intended to ensure that chunks being rendered are not too old and unneeded.
-    MaxBlocksPerFrame = 200 # Max number of blocks to add to the pyglet batch every frame. This results in a chunk being rendered over many frames to stop stuttering issues.
+    MaxBlocksPerFrame = 300 # Max number of blocks to add to the pyglet batch every frame. This results in a chunk being rendered over many frames to stop stuttering issues.
     BatchAddMode = BatchAddModes.Nonindexed # Which call to use when adding to pyglet.graphics.Batch.
 
 
@@ -74,7 +84,7 @@ class WorldDataServer:
     ConnectionWaitTime = 1 # Specifies how long, in seconds, the server should wait for requests before checking if it should exit.
     ChunkSize = 16
     ChunkHexLength = 6 # This is 1-512. It trims a SHA 512 hash to this length to compare and print chunks.
-    WorldHeight = 8
+    WorldHeight = 256
 
 
 class WorldDataClient:

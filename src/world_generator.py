@@ -1,5 +1,6 @@
 import unittest, logging
 from time import sleep, time
+import queue
 from queue import Empty as QueueEmpty
 import multiprocessing as mp
 from world_data import WorldDataServer, WorldDataClient
@@ -66,8 +67,11 @@ class WorldGenerator:
         if len(self.recently_requested) > config.WorldGenerator.MaxRecentChunksStored:
             self.log.warning("Had to clean up recently_requested on main process because size is {}".format(len(self.recently_requested)))
             self.garbage_collect_recently_requested()
-        self.recently_requested[(cx, cy)] = time()
-        self.chunks_to_generate.put((cx, cy))
+        try:
+            self.chunks_to_generate.put((cx, cy), block=False)
+            self.recently_requested[(cx, cy)] = time()
+        except queue.Full:
+            self.log.warning("Generation queue is full, dropping request for chunk ({}, {})".format(cx ,cy))
 
 
 class WorldGenerationSlave(mp.Process):
@@ -87,8 +91,8 @@ class WorldGenerationSlave(mp.Process):
             except QueueEmpty: continue
 
             if self.world_client.is_generated(cx, cy): continue
-            generation_type = generations.pick_generation(cx, cy, self.world_client)
-            chunk = generation_type.generate(cx, cy, self.world_client)
+            generator = generations.pick_generation(cx, cy, self.world_client)
+            chunk = generator.generate(cx, cy, self.world_client)
             res = self.world_client.init_chunk(cx, cy, chunk)
             if res:
                 self.parent_log.info("Failed to initiate chunk ({}, {})".format(cx, cy))

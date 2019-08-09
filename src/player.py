@@ -207,10 +207,10 @@ class PlayerManager():
     self.move(self.velocity.x, self.velocity.y, self.velocity.z)
 
 
-  def draw_perspective(self):
+  def draw_perspective(self, width=config.Window.Width, height=config.Window.Height):
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluPerspective(config.Player.FOV, config.Window.Width/config.Window.Height, 0.1, 10000.0)
+    gluPerspective(config.Player.FOV, width/height, 0.1, 10000.0)
     glRotatef(self.player.heading[0],1,0,0)
     glRotatef(self.player.heading[1],0,1,0)
     glRotatef(self.player.heading[2],0,0,1)

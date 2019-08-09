@@ -1,4 +1,5 @@
 import logging
+import sys
 import variables
 import config
 import world_data
@@ -6,6 +7,7 @@ import player
 import world_generator
 import block
 import math
+import os
 import pdb
 from pyglet.gl  import *
 from threading  import Thread
@@ -36,9 +38,9 @@ class Game(pyglet.window.Window):
 
     # setup the window
     self.log.info("Initializing window...")
-    super(Game, self).__init__()                     # initialize the window
-    if config.Window.Width is not None and config.Window.Height is not None:
-      self.set_size(config.Window.Width, config.Window.Height)       # set the window size
+    super(Game, self).__init__(resizable=True)                     # initialize the window
+    #if config.Window.Width is not None and config.Window.Height is not None:
+      #self.set_size(config.Window.Width, config.Window.Height)       # set the window size
     self.set_exclusive_mouse(False)                  # lock the cursor to this window
     self.set_vsync(variables.vsync)                  # turn off vsync so the framerate isn't limited at your refresh rate
     self.log.info("Initialized window.")
@@ -49,12 +51,16 @@ class Game(pyglet.window.Window):
     self.push_handlers(self.keys)                    # tells pyglet that it should keep track of when keys are pressed
     self.log.info("Setup key state handler.")
 
+    if sys.platform == 'linux':
+      os.nice(2)
     # setup game
     self.log.info("Setting up world data server...")
     self.world_server = world_data.WorldDataServer(self.log)                       # the world
     self.world_server.start()
     self.world_client = self.world_server.get_main_client()
     self.log.info("Setup world data server.")
+    if sys.platform == 'linux':
+      os.nice(0)
 
     self.log.info("Getting extra world data clients for other processes...")
     generator_world_client = self.world_client.new_client("World Generator")[config.WorldRequestData.NewClient]
@@ -66,15 +72,21 @@ class Game(pyglet.window.Window):
     self.log.info("Created player.")
 
     self.log.info("Creating and starting world generator...")
+    if sys.platform == 'linux':
+      os.nice(10)
     self.world_generator = world_generator.WorldGenerator(generator_world_client, self.log) # generates new chunks
     self.world_generator.start()
     self.log.info("Created and started world generator.")
 
     self.log.info("Creating and starting world renderer...")
+    if sys.platform == 'linux':
+      os.nice(8)
     self.world_renderer = WorldRenderer(renderer_world_client, self.log)          # draws the world
     self.world_renderer.start()
     self.log.info("Created and started world renderer.")
 
+    if sys.platform == 'linux':
+      os.nice(0)
     pyglet.clock.set_fps_limit(variables.maximum_framerate)      # set the maximum framerate
     if config.Game.PreventSleep:
       pyglet.clock.schedule_interval(self.prevent_sleep, 1.0/60.0) # this prevents the application from 'smartly' sleeping when idle
@@ -87,6 +99,8 @@ class Game(pyglet.window.Window):
     glEnable(GL_CULL_FACE)  # don't draw faces that are behind something
     glFrontFace(GL_CCW)     # used to determine the 'front' of a 2d shape
     glCullFace(GL_BACK)     # remove the backs of faces
+    glDepthRange(0, 1)      # Show as much depth wise as possible
+    glEnable(GL_DEPTH_CLAMP)
     self.log.info("Configured OpenGL.")
 
     self.loaded_blocks = 0 # how many blocks are currently rendered
@@ -105,6 +119,30 @@ class Game(pyglet.window.Window):
     self.times = []
     if config.Debug.Game.FPS_SPAM:
       self.fps = {}
+
+    if config.WorldGenerator.InitialDistance > 0:
+      print("Generating initial radius of {}.".format(config.WorldGenerator.InitialDistance))
+      self.generate_radius(0, 0, config.WorldGenerator.InitialDistance)
+
+    if config.WorldRenderer.InitialDistance > 0:
+      print("Rendering initial radius of {}.".format(config.WorldRenderer.InitialDistance))
+      self.generate_radius(0, 0, config.WorldRenderer.InitialDistance)
+
+
+  def generate_radius(self, cx, cy, radius):
+    r = range(-radius, radius+1)
+    for ox, oy in itertools.product(r, r):
+      x = ox + cx
+      y = oy + cy
+      self.world_generator.request_chunk(x, y)
+
+
+  def render_radius(self, cx, cy, radius):
+    r = range(-radius, radius+1)
+    for ox, oy in itertools.product(r, r):
+      x = ox + cx
+      y = oy + cy
+      self.world_renderer.request_chunk(x, y)
 
 
   def quit(self):
@@ -148,12 +186,8 @@ class Game(pyglet.window.Window):
     current_chunk = self.world_client.abs_block_to_chunk_block(*self.player.standing_on())[0]
 
     # Generate all the chunks in the generation distance.
-    r = range(-config.WorldGenerator.Distance, config.WorldGenerator.Distance+1)
-    for offset in itertools.product(r, r):
-      cx = offset[0] + current_chunk[0]
-      cy = offset[1] + current_chunk[1]
-      self.world_generator.request_chunk(cx, cy)
-      self.world_renderer.request_chunk(cx, cy)
+    self.generate_radius(*current_chunk, config.WorldGenerator.Distance)
+    self.render_radius(*current_chunk, config.WorldRenderer.Distance)
 
 
   def check_user_input(self):
@@ -258,6 +292,9 @@ class Game(pyglet.window.Window):
   def on_resize(self, width, height):
     config.Window.Width = width
     config.Window.Height = height
+    super(Game, self).on_resize(width, height)
+    print("Resizing window: {}, {}".format(config.Window.Width, config.Window.Height))
+
 
   def on_draw(self):
     dt = pyglet.clock.tick()
@@ -285,7 +322,7 @@ class Game(pyglet.window.Window):
     self.clear()
     #glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST)
 
-    self.player.draw_perspective()
+    self.player.draw_perspective(config.Window.Width, config.Window.Height)
     self.generate_view()
     self.world_renderer.draw()
 

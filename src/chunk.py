@@ -46,13 +46,20 @@ class Chunk:
 
 
     @classmethod
+    def all_columns(cls):
+        for bx, bz in itertools.product(range(config.WorldDataServer.ChunkSize),
+                                        range(config.WorldDataServer.ChunkSize)):
+            yield (bx, bz)
+
+
+    @classmethod
     def __check_position__(cls, bx, by, bz):
         if not 0 <= bx < config.WorldDataServer.ChunkSize:
             raise ValueError("X coordinate must be > 0 and < {}, not {}".format(config.WorldDataServer.ChunkSize, bx))
-        if not 0 <= by < config.WorldDataServer.WorldHeight:
-            raise ValueError("Y coordinate must be > 0 and < {}, not {}".format(config.WorldDataServer.ChunkSize, by))
+        if not 0 <= by < config.WorldDataServer.WorldHeight+1:
+            raise ValueError("Y coordinate must be > 0 and < {}, not {}".format(config.WorldDataServer.WorldHeight, by))
         if not 0 <= bz < config.WorldDataServer.ChunkSize:
-            raise ValueError("Z coordinate must be > 0 and < {}, not {}".format(config.WorldDataServer.WorldHeight, bz))
+            raise ValueError("Z coordinate must be > 0 and < {}, not {}".format(config.WorldDataServer.ChunkSize, bz))
 
 
 
