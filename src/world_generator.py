@@ -69,6 +69,7 @@ class WorldGenerator:
             self.garbage_collect_recently_requested()
         try:
             self.chunks_to_generate.put((cx, cy), block=False)
+            self.log.info("Requested chunk ({}, {}).".format(cx, cy))
             self.recently_requested[(cx, cy)] = time()
         except queue.Full:
             self.log.warning("Generation queue is full, dropping request for chunk ({}, {})".format(cx ,cy))

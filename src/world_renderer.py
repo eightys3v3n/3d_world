@@ -22,9 +22,10 @@ class WorldRenderer(mp.Process):
         self.world_client = world_client
         self.chunks_to_render = mp.Queue(config.WorldRenderer.MaxQueuedChunks)
         self.rendered_chunks = {} # (cx, cy): pyglet.graphics.Batch to draw
-        self.recently_requested = {} # (cx, cy): time requested
+        self.requested = [] # Chunks that have been requested and not drawn.
         self.finished_chunks = mp.Queue(maxsize=config.WorldRenderer.MaxFinishedChunks)
         self.rendering_chunk = None # ((cx, cy), render_data)
+        self.pending_chunks = []
         self.__running__ = mp.Value('b', False)
 
 
@@ -35,8 +36,14 @@ class WorldRenderer(mp.Process):
 
     def stop(self):
         self.__running__.value = False
-        if self.is_alive():
-            self.join()
+        while not self.chunks_to_render.empty():
+            try:
+                self.chunks_to_render.get(block=False)
+            except queue.Empty: pass
+        while not self.finished_chunks.empty():
+            try:
+                self.finished_chunks.get(block=False)
+            except queue.Empty: pass
 
 
     def render_block_to_data(self, pos, block, batch_data):
@@ -61,18 +68,14 @@ class WorldRenderer(mp.Process):
         """Put in a request for a chunk to be rendered.
         Parameters:
             force (boolean): False means never rerender a chunk."""
-        if not force and (cx, cy) in self.recently_requested:
-            time_since = time.time() - self.recently_requested[(cx, cy)]
-            if time_since < config.WorldRenderer.RecentlyRequestedTimeout:
-                self.log.debug("Skipping already rendered chunk ({}, {})".format(cx, cy))
-                return
-        if (cx, cy) in self.rendered_chunks and not force:
+        if (cx, cy) in self.requested and not force:
+            self.log.debug("Ignoring already requested chunk ({}, {}).".format(cx, cy))
             return
 
-        self.log.debug("Requesting chunk ({}, {})".format(cx, cy))
+        self.log.info("Requesting chunk ({}, {})".format(cx, cy))
         try:
+            self.requested.append((cx, cy))
             self.chunks_to_render.put((cx, cy), block=False)
-            self.recently_requested[(cx, cy)] = time.time()
         except queue.Full:
             self.log.warning("Dropping request for chunk ({}, {}) because render queue is full.".format(cx, cy))
 
@@ -96,9 +99,16 @@ class WorldRenderer(mp.Process):
                 pos = self.world_client.chunk_block_to_abs_block(cx, cy, *pos)
                 self.render_block_to_data(pos, block, batch_data)
 
-            self.finished_chunks.put([(cx, cy), batch_data])
+            try:
+                self.finished_chunks.put([(cx, cy), batch_data], timeout=config.WorldRenderer.PutFinishedChunkTimeout)
+                return False
+
+            except queue.Full:
+                self.log.warning("Failed to put finished chunk into queue ({}, {}).".format(cx, cy))
+                return True
         else:
             self.log.info("Requested chunk isn't generated ({}, {})".format(cx, cy))
+            return True
 
 
     def render_block(self, render_data, batch):
@@ -150,9 +160,11 @@ class WorldRenderer(mp.Process):
         """Render some of the pre_calculated chunks onto the screen by putting them into a batch to be drawn.
         Tries to finish the incompletely rendered chunk before getting another pre-calculated chunk."""
         if self.finished_chunks.full():
+            self.log.warning("Throwing out some finished chunks from render queue.")
             for i in range(config.WorldRenderer.TrashChunksOnFullFinishedQueue):
                 try:
-                    self.finished_chunks.get(block=False)
+                    (cx, cy), _ = self.finished_chunks.get(block=False)
+                    self.requested.remove((cx, cy))
                 except queue.Empty: break
 
         rendered_blocks = self.continue_rendering(config.WorldRenderer.MaxBlocksPerFrame)
@@ -160,19 +172,14 @@ class WorldRenderer(mp.Process):
         if rendered_blocks < config.WorldRenderer.MaxBlocksPerFrame:
             try:
                 self.rendering_chunk = self.finished_chunks.get(block=False)
+                self.log.info("Finished rendering chunk ({}, {}).".format(*self.rendering_chunk[0]))
+                self.requested.remove(self.rendering_chunk[0])
             except queue.Empty: pass
             self.continue_rendering(config.WorldRenderer.MaxBlocksPerFrame - rendered_blocks)
 
 
-    def timeout_recently_requested(self):
-        """Removes all recently made requests that are older than config.WorldRenderer.RecentlyRequestedTimeout.
-        This function needs to be called to prevent the recently_requested array from growing forever."""
-        for (cx, cy), t in self.recently_requested.items():
-            if time.time() - t >= config.WorldRenderer.RecentlyRequestedTimeout:
-                del self.recently_requested[(cx, cy)]
-
-
     def draw(self):
+
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
@@ -187,9 +194,14 @@ class WorldRenderer(mp.Process):
             try:
                 cx, cy = self.chunks_to_render.get(timeout=config.WorldRenderer.WaitTime)
                 self.log.debug("Received chunk render request for ({}, {})".format(cx, cy))
-                self.calc_chunk_render_data(cx, cy)
+                if self.calc_chunk_render_data(cx, cy):
+                    self.pending_chunks.append((cx, cy))
+
+                for cx, cy in self.pending_chunks:
+                    if not self.calc_chunk_render_data(cx, cy):
+                        self.log.info("Finished pending chunk ({}, {}).".format(cx, cy))
+                        self.pending_chunks.remove((cx, cy))
             except queue.Empty: pass
-            self.timeout_recently_requested()
 
 
     def block_colour(self, block):
@@ -256,7 +268,7 @@ class TestWorldRenderer(unittest.TestCase):
 
     def tearDown(self):
         self.world_server.stop()
-        self.world_server.join()
+        #self.world_server.join()
 
 
     def test_block_vertices(self):

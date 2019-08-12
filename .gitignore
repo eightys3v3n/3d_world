@@ -5,3 +5,5 @@ lib64
 include
 *.log
 *.prof
+3d_world_venv
+src/activate

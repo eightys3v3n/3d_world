@@ -15,6 +15,7 @@ from time       import time
 from time       import sleep
 from noise      import pnoise2
 from world_renderer import WorldRenderer
+from world_renderer_gui import Minimap
 import variables
 import itertools
 
@@ -83,6 +84,7 @@ class Game(pyglet.window.Window):
       os.nice(8)
     self.world_renderer = WorldRenderer(renderer_world_client, self.log)          # draws the world
     self.world_renderer.start()
+    self.world_renderer_gui = Minimap(self.world_renderer)
     self.log.info("Created and started world renderer.")
 
     if sys.platform == 'linux':
@@ -95,12 +97,11 @@ class Game(pyglet.window.Window):
 
     self.log.info("Configuring OpenGL...")
     glEnable(GL_DEPTH_TEST) # gpu can tell when stuff is infront or behind
-    glDepthFunc(GL_LESS)    # anything closer should be drawn
+    glDepthFunc(GL_LEQUAL)    # anything closer should be drawn
     glEnable(GL_CULL_FACE)  # don't draw faces that are behind something
     glFrontFace(GL_CCW)     # used to determine the 'front' of a 2d shape
     glCullFace(GL_BACK)     # remove the backs of faces
     glDepthRange(0, 1)      # Show as much depth wise as possible
-    glEnable(GL_DEPTH_CLAMP)
     self.log.info("Configured OpenGL.")
 
     self.loaded_blocks = 0 # how many blocks are currently rendered
@@ -142,20 +143,8 @@ class Game(pyglet.window.Window):
     for ox, oy in itertools.product(r, r):
       x = ox + cx
       y = oy + cy
-      self.world_renderer.request_chunk(x, y)
-
-
-  def quit(self):
-    """
-    called when the window is closed
-    """
-    self.world_generator.stop()
-    self.world_server.stop()
-    self.world_renderer.stop()
-
-    if len(self.times) > 0:
-      average = round(sum(self.times) / len(self.times), 5)
-      print("Average load_finished_chunks time: {}".format(average))
+      if not self.world_renderer.is_rendered(x, y):
+        self.world_renderer.request_chunk(x, y)
 
 
   def prevent_sleep(self,dt):
@@ -289,6 +278,11 @@ class Game(pyglet.window.Window):
       else:
         config.WorldGenerator.Distance = 1
 
+
+    elif symbol == pyglet.window.key.O:
+      print("Requested to be rendered: {}".format(self.world_renderer.requested))
+
+
   def on_resize(self, width, height):
     config.Window.Width = width
     config.Window.Height = height
@@ -296,9 +290,26 @@ class Game(pyglet.window.Window):
     print("Resizing window: {}, {}".format(config.Window.Width, config.Window.Height))
 
 
-  def on_draw(self):
-    dt = pyglet.clock.tick()
+  def on_close(self):
+    self.close()
+    self.world_generator.stop()
+    self.world_server.stop()
+    self.world_renderer.stop()
+    self.world_renderer_gui.close()
 
+    if len(self.times) > 0:
+      average = round(sum(self.times) / len(self.times), 5)
+      print("Average load_finished_chunks time: {}".format(average))
+
+
+
+  def on_draw(self):
+    glEnable(GL_DEPTH_TEST) # gpu can tell when stuff is infront or behind
+    glDepthFunc(GL_LESS)    # anything closer should be drawn
+    glEnable(GL_CULL_FACE)  # don't draw faces that are behind something
+    glFrontFace(GL_CCW)     # used to determine the 'front' of a 2d shape
+    glCullFace(GL_BACK)     # remove the backs of faces
+    glDepthRange(0, 1)      # Show as much depth wise as possible
 
     if __debug__ and config.Debug.Game.FPS_SPAM:
       offset = 10000
@@ -320,11 +331,16 @@ class Game(pyglet.window.Window):
     self.check_user_input()
 
     self.clear()
-    #glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST)
+    glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST)
 
-    self.player.draw_perspective(config.Window.Width, config.Window.Height)
+    self.player.draw_perspective()
     self.generate_view()
     self.world_renderer.draw()
 
     glTranslatef(0, 1000, 0)
     self.fps_display.draw()
+
+    self.world_renderer_gui.update()
+    self.world_renderer_gui.draw()
+
+    dt = pyglet.clock.tick()

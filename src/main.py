@@ -13,12 +13,12 @@ def main():
 
   try:
 
-    cProfile.runctx('pyglet.app.run()', globals(), locals(), 'main.prof')
-    #pyglet.app.run()
+    #cProfile.runctx('pyglet.app.run()', globals(), locals(), 'main.prof')
+    pyglet.app.run()
   except KeyboardInterrupt:
     pass
   finally:
-    window.quit()
+    window.on_close()
 
 if __name__ == "__main__":
   main()
