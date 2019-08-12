@@ -28,8 +28,8 @@ class OpenGL:
     pass
 
 class Game:
-    ViewDistance = 4  # radius of chunks to render and generate. Not the actual visible distance
-    InitialGeneration = 10 # radius of chunks around (0, 0) to render when starting the game.
+    ViewDistance = 2  # radius of chunks to render and generate. Not the actual visible distance
+    InitialGeneration = 0 # radius of chunks around (0, 0) to render when starting the game.
     PreventSleep = True
     ConsoleLogLevel = logging.ERROR # This doesn't work for some reason. Need to do more reading on the man page.
 
@@ -44,7 +44,7 @@ class Player:
 
 
 class WorldGenerator:
-    LogLevel = logging.WARNING
+    LogLevel = logging.INFO
     Distance = Game.ViewDistance + 1 # radius of chunks to generate around the player.
     InitialDistance = Game.InitialGeneration # radius of chunks to generate when starting the game.
     Processes = 2 # Number of processes generating chunks in parallel.
@@ -67,14 +67,15 @@ class WorldRenderer:
 
     Distance = Game.ViewDistance # Radius of chunks to render around the player.
     InitialDistance = Game.InitialGeneration
-    LogLevel = logging.WARNING
+    LogLevel = logging.INFO
     MaxQueuedChunks = 1024
     MaxFinishedChunks = 16 # This should be low enough that there is no noticable delay when drawing. It will then stop the renderer for that frame. It is essentially the main bottle neck in speed of rendering chunks, how many can we deal with on the main thread in a single frame without stuttering issues.
     WaitTime = 1 # Specifies how long, in seconds, the renderer should wait for requests before checking if it should exit.
-    RecentlyRequestedTimeout = 2 # How long (seconds) to wait until a chunk can be requested to be rendered again.
+    RecentlyRequestedTimeout = 4 # How long (seconds) to wait until a chunk can be requested to be rendered again.
     TrashChunksOnFullFinishedQueue = 1 # Throw out the data for this many chunks if the finished data queue is full. This is intended to ensure that chunks being rendered are not too old and unneeded.
-    MaxBlocksPerFrame = 300 # Max number of blocks to add to the pyglet batch every frame. This results in a chunk being rendered over many frames to stop stuttering issues.
+    MaxBlocksPerFrame = 200 # Max number of blocks to add to the pyglet batch every frame. This results in a chunk being rendered over many frames to stop stuttering issues.
     BatchAddMode = BatchAddModes.Nonindexed # Which call to use when adding to pyglet.graphics.Batch.
+    PutFinishedChunkTimeout = 2
 
 
 class WorldDataServer:
