@@ -4,10 +4,14 @@ from world_data import WorldDataClient
 import unittest
 import config
 import noise
+import time
 
 
 def pick_generation(cx, cy, world_client):
-    return PerlinHeight
+    if cx > 0:
+        return SimplexHeight
+    else:
+        return PerlinHeight
 
 
 def translate(num, min_in, max_in, min_out, max_out):
@@ -28,19 +32,69 @@ class Generation:
         """This generates the chunk at cx, cy and returns it."""
         raise NotImplementedError()
 
-
-class PerlinHeight(Generation):
+class SimplexHeight(Generation):
     """This generation type uses perlin noise to decide on the height of the ground. It then creates a grass only world."""
     X_SCALE = 400
     Z_SCALE = 400
-    OCTAVES = 5
+    OCTAVES = 4
     PERSISTENCE = 0.5
     MULTIPLIER = 10
+    DEPTH = 5 # How many blocks deep to go
 
 
     @classmethod
     def column_height(cls, abx, abz):
         n = noise.snoise3(abx / cls.X_SCALE,
+                          abz / cls.Z_SCALE,
+                          config.WorldGenerator.Seed,
+                          octaves=cls.OCTAVES,
+                          persistence=cls.PERSISTENCE)
+
+        n *= cls.MULTIPLIER
+        n = translate(n, 0, cls.MULTIPLIER, 0, config.WorldDataServer.WorldHeight)
+        height = round(n)
+        return height
+
+
+    @classmethod
+    def column_heights(cls, cx, cy):
+        column_heights = {}
+        for bx, bz in Chunk.all_columns():
+            abx, _, abz = WorldDataClient.chunk_block_to_abs_block(cx, cy, bx, 0, bz)
+            h = cls.column_height(abx, abz)
+            if h > config.WorldDataServer.WorldHeight:
+                print("Generator returned an invalid world height.")
+            column_heights[(bx, bz)] = h
+        return column_heights
+
+
+    @classmethod
+    def generate(cls, cx, cy, world_client):
+        chunk = Chunk()
+        column_heights = cls.column_heights(cx, cy)
+
+        for bx, bz in chunk.all_columns():
+            lowest = max(0, column_heights[bx, bz]-PerlinHeight.DEPTH)
+            for by in range(lowest, column_heights[bx, bz]):
+                chunk.set_block(bx, by, bz, Block(config.BlockType.Grass))
+        return chunk
+
+
+
+
+class PerlinHeight(Generation):
+    """This generation type uses perlin noise to decide on the height of the ground. It then creates a grass only world."""
+    X_SCALE = 600
+    Z_SCALE = 600
+    OCTAVES = 4
+    PERSISTENCE = 0.5
+    MULTIPLIER = 10
+    DEPTH = 5 # How many blocks deep to go
+
+
+    @classmethod
+    def column_height(cls, abx, abz):
+        n = noise.pnoise3(abx / cls.X_SCALE,
                           abz / cls.Z_SCALE,
                           config.WorldGenerator.Seed,
                           octaves=cls.OCTAVES,
@@ -69,7 +123,8 @@ class PerlinHeight(Generation):
         column_heights = cls.column_heights(cx, cy)
 
         for bx, bz in chunk.all_columns():
-            for by in range(0, column_heights[bx, bz]):
+            lowest = max(0, column_heights[bx, bz]-PerlinHeight.DEPTH)
+            for by in range(lowest, column_heights[bx, bz]):
                 chunk.set_block(bx, by, bz, Block(config.BlockType.Grass))
         return chunk
 

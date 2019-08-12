@@ -74,8 +74,8 @@ class WorldRenderer(mp.Process):
 
         self.log.info("Requesting chunk ({}, {})".format(cx, cy))
         try:
-            self.requested.append((cx, cy))
             self.chunks_to_render.put((cx, cy), block=False)
+            self.requested.append((cx, cy))
         except queue.Full:
             self.log.warning("Dropping request for chunk ({}, {}) because render queue is full.".format(cx, cy))
 
@@ -165,6 +165,8 @@ class WorldRenderer(mp.Process):
                 try:
                     (cx, cy), _ = self.finished_chunks.get(block=False)
                     self.requested.remove((cx, cy))
+                    if (cx, cy) in self.rendered_chunks:
+                        del self.rendered_chunks[(cx, cy)]
                 except queue.Empty: break
 
         rendered_blocks = self.continue_rendering(config.WorldRenderer.MaxBlocksPerFrame)
@@ -195,6 +197,7 @@ class WorldRenderer(mp.Process):
                 cx, cy = self.chunks_to_render.get(timeout=config.WorldRenderer.WaitTime)
                 self.log.debug("Received chunk render request for ({}, {})".format(cx, cy))
                 if self.calc_chunk_render_data(cx, cy):
+                    self.log.info("Saving chunk to pending because render failed ({}, {})".format(cx, cy))
                     self.pending_chunks.append((cx, cy))
 
                 for cx, cy in self.pending_chunks:

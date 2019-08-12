@@ -15,7 +15,7 @@ from time       import time
 from time       import sleep
 from noise      import pnoise2
 from world_renderer import WorldRenderer
-from world_renderer_gui import Minimap
+from minimap import Minimap
 import variables
 import itertools
 
@@ -84,11 +84,14 @@ class Game(pyglet.window.Window):
       os.nice(8)
     self.world_renderer = WorldRenderer(renderer_world_client, self.log)          # draws the world
     self.world_renderer.start()
-    self.world_renderer_gui = Minimap(self.world_renderer)
     self.log.info("Created and started world renderer.")
+
+    if config.Game.Minimap:
+      self.minimap = Minimap(self.world_renderer, self.world_generator, self.world_client)
 
     if sys.platform == 'linux':
       os.nice(0)
+
     pyglet.clock.set_fps_limit(variables.maximum_framerate)      # set the maximum framerate
     if config.Game.PreventSleep:
       pyglet.clock.schedule_interval(self.prevent_sleep, 1.0/60.0) # this prevents the application from 'smartly' sleeping when idle
@@ -114,7 +117,6 @@ class Game(pyglet.window.Window):
     #for cx, cy in itertools.product(range(-5, 6), range(-5, 6)):
     #  self.world_generator.request_chunk(cx, cy)
 
-    self.fps_display = pyglet.clock.ClockDisplay(color=(1.0, 1.0, 1.0, 1.0))
     self.log.info("Started.")
 
     self.times = []
@@ -155,6 +157,36 @@ class Game(pyglet.window.Window):
     pass
 
 
+  def generate_view_sequence(self, cx, cy, view_distance):
+    """UNUSED"""
+    seq = []
+    for distance in range(view_distance):
+      if distance == 0:
+        seq.append((cx, cy))
+        continue;
+
+    for length in range(distance):
+      if length == 0:
+        seq.append((cx-distance, cy))
+        seq.append((cx+distance, cy))
+      else:
+        seq.append((cx+distance, cy-length))
+        seq.append((cx-distance, cy-length))
+        seq.append((cx+distance, cy+length))
+        seq.append((cx-distance, cy+length))
+
+    for height in range(distance):
+      if height == 0:
+        seq.append((cx, cy-distance))
+        seq.append((cx, cy+distance))
+      else:
+        seq.append((cx-height, cy+distance))
+        seq.append((cx-height, cy-distance))
+        seq.append((cx+height, cy+distance))
+        seq.append((cx+height, cy-distance))
+    return seq
+
+
   def generate_view(self):
     """
     Requests chunks in config.WorldGenerator.Distance to be generated.
@@ -172,11 +204,16 @@ class Game(pyglet.window.Window):
         print("Took {:.4} seconds to load_finished_chunks.".format(round(after - before, 4)))
         self.times.append(res)
 
-    current_chunk = self.world_client.abs_block_to_chunk_block(*self.player.standing_on())[0]
+    cx, cy = self.world_client.abs_block_to_chunk_block(*self.player.standing_on())[0]
 
     # Generate all the chunks in the generation distance.
-    self.generate_radius(*current_chunk, config.WorldGenerator.Distance)
-    self.render_radius(*current_chunk, config.WorldRenderer.Distance)
+    self.generate_radius(cx, cy, config.WorldGenerator.Distance)
+    self.render_radius(cx, cy, config.WorldRenderer.Distance)
+    # Using a funky pattern because why not.
+    #for x, y in self.generate_view_sequence(cx, cy, config.WorldGenerator.Distance):
+      #self.world_generator.request_chunk(x, y)
+    #for x, y in self.generate_view_sequence(cx, cy, config.WorldRenderer.Distance):
+      #self.world_renderer.request_chunk(x, y)
 
 
   def check_user_input(self):
@@ -280,7 +317,10 @@ class Game(pyglet.window.Window):
 
 
     elif symbol == pyglet.window.key.O:
-      print("Requested to be rendered: {}".format(self.world_renderer.requested))
+      cx, cy = self.world_client.abs_block_to_chunk_block(*self.player.standing_on())[0]
+      print("Chunk {}, {}".format(cx, cy))
+      if (cx, cy) in self.world_renderer.requested:
+        print("Chunk is in requested")
 
 
   def on_resize(self, width, height):
@@ -295,7 +335,8 @@ class Game(pyglet.window.Window):
     self.world_generator.stop()
     self.world_server.stop()
     self.world_renderer.stop()
-    self.world_renderer_gui.close()
+    if config.Game.Minimap:
+      self.minimap.close()
 
     if len(self.times) > 0:
       average = round(sum(self.times) / len(self.times), 5)
@@ -304,13 +345,6 @@ class Game(pyglet.window.Window):
 
 
   def on_draw(self):
-    glEnable(GL_DEPTH_TEST) # gpu can tell when stuff is infront or behind
-    glDepthFunc(GL_LESS)    # anything closer should be drawn
-    glEnable(GL_CULL_FACE)  # don't draw faces that are behind something
-    glFrontFace(GL_CCW)     # used to determine the 'front' of a 2d shape
-    glCullFace(GL_BACK)     # remove the backs of faces
-    glDepthRange(0, 1)      # Show as much depth wise as possible
-
     if __debug__ and config.Debug.Game.FPS_SPAM:
       offset = 10000
       if dt > 0:
@@ -337,10 +371,8 @@ class Game(pyglet.window.Window):
     self.generate_view()
     self.world_renderer.draw()
 
-    glTranslatef(0, 1000, 0)
-    self.fps_display.draw()
+    if config.Game.Minimap:
+      self.minimap.update()
+      self.minimap.draw()
 
-    self.world_renderer_gui.update()
-    self.world_renderer_gui.draw()
-
-    dt = pyglet.clock.tick()
+    #dt = pyglet.clock.tick()
