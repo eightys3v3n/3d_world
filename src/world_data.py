@@ -117,6 +117,7 @@ class WorldDataClient:
 
     @classmethod
     def abs_block_to_chunk_block(cls, abx, aby, abz):
+        """Converts an Absolute Block position to a Chunk:Block position. See README.md, the part on Positions."""
         bx = abx % config.WorldDataServer.ChunkSize
         cx = (abx - bx) / config.WorldDataServer.ChunkSize
 
@@ -135,6 +136,7 @@ class WorldDataClient:
 
     @classmethod
     def chunk_block_to_abs_block(cls, cx, cy, bx, by, bz):
+        """Converts a Chunk:Block position to an Absolute Block position. See README.md, the part on Positions."""
         abx = cx * config.WorldDataServer.ChunkSize + bx
         aby = by
         abz = cy * config.WorldDataServer.ChunkSize + bz

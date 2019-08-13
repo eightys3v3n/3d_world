@@ -9,6 +9,7 @@ def default_block():
 
 
 class Chunk:
+    """A chunk of blocks in the world. config.WorldDataServer.ChunkSize blocks in with and height. Also converts between Chunk:Block coordinates and absolute block coordinates."""
     def __init__(self):
         self.__blocks__ = defaultdict(default_block) # {(x, y, z): Block()}
         self.__generated__ = False
@@ -39,6 +40,7 @@ class Chunk:
 
     @classmethod
     def all_positions(cls):
+        """Iterate through all the possible positions in this chunk. Including the ones with no block object!"""
         for bx, by, bz in itertools.product(range(config.WorldDataServer.ChunkSize),
                                             range(config.WorldDataServer.WorldHeight),
                                             range(config.WorldDataServer.ChunkSize)):
@@ -47,6 +49,7 @@ class Chunk:
 
     @classmethod
     def all_columns(cls):
+        """Iterate through all the possible columns in this chunk. Including the ones with no block objects!"""
         for bx, bz in itertools.product(range(config.WorldDataServer.ChunkSize),
                                         range(config.WorldDataServer.ChunkSize)):
             yield (bx, bz)
@@ -54,6 +57,7 @@ class Chunk:
 
     @classmethod
     def __check_position__(cls, bx, by, bz):
+        """Return True if a given position is a valid position in this chunk, else False"""
         if not 0 <= bx < config.WorldDataServer.ChunkSize:
             raise ValueError("X coordinate must be > 0 and < {}, not {}".format(config.WorldDataServer.ChunkSize, bx))
         if not 0 <= by < config.WorldDataServer.WorldHeight+1:
@@ -62,13 +66,14 @@ class Chunk:
             raise ValueError("Z coordinate must be > 0 and < {}, not {}".format(config.WorldDataServer.ChunkSize, bz))
 
 
-
     def get_block(self, x, y, z):
+        """Get the Block() at block position relative to chunk's SW corner."""
         Chunk.__check_position__(x, y, z)
         return self.__blocks__[(x, y, z)]
 
 
     def set_block(self, x, y, z, block):
+        """Set the Block() at block position relative to chunk's SW corner."""
         if not self.__generated__:
             self.__generated__ = True
 
@@ -79,6 +84,7 @@ class Chunk:
 
 
     def get_column(self, bx, by):
+        """Get a dict of all the blocks in the requested column."""
         column = {}
         for (bx1, by1, bz1), b in self:
             if (bx, by) == (bx1, by1):
@@ -87,6 +93,7 @@ class Chunk:
 
 
     def is_generated(self):
+        """True if this chunk has been modified at all. False if this is a blank chunk."""
         return self.__generated__
 
 

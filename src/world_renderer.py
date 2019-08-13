@@ -14,27 +14,33 @@ class RenderedBatch:
 
 
 class WorldRenderer(mp.Process):
+    """Handles the rendering and storing of screen data. Also how voxels are drawn and what not. The seperate process handles actually getting the chunk from the WorldDataServer and creating the vertex/colour arrays to be sent to the GPU."""
+
     def __init__(self, world_client, parent_log):
         super(WorldRenderer, self).__init__()
         self.parent_log = parent_log
         self.log = self.parent_log.getChild("WorldRenderer")
         self.log.setLevel(config.WorldRenderer.LogLevel)
+
         self.world_client = world_client
-        self.chunks_to_render = mp.Queue(config.WorldRenderer.MaxQueuedChunks)
+
+        self.chunks_to_render = mp.Queue(config.WorldRenderer.MaxQueuedChunks) # (cx, cy): Chunks that are requested to be rendered.
         self.rendered_chunks = {} # (cx, cy): pyglet.graphics.Batch to draw
-        self.requested = [] # Chunks that have been requested and not drawn.
-        self.finished_chunks = mp.Queue(maxsize=config.WorldRenderer.MaxFinishedChunks)
-        self.rendering_chunk = None # ((cx, cy), render_data)
-        self.pending_chunks = []
+        self.requested = [] # (cx, cy): Chunks that have been requested and aren't drawn yet.
+        self.finished_chunks = mp.Queue(maxsize=config.WorldRenderer.MaxFinishedChunks) # ((cx, cy), chunk_data): Chunks that have been pre-calculated but have yet to be saved to the GPU for drawing.
+        self.rendering_chunk = None # ((cx, cy), render_data): The chunk that is being drawn over more than one frame.
+        self.pending_chunks = [] # (cx, cy): Chunks that were attempted but something happened (like it wasn't generated yet).
         self.__running__ = mp.Value('b', False)
 
 
     def start(self, *args, **kwargs):
+        """Start the pre-calculation process."""
         super(WorldRenderer, self).start(*args, **kwargs)
         self.__running__.value = True
 
 
     def stop(self):
+        """Stop the pre-calculation process."""
         self.__running__.value = False
         while not self.chunks_to_render.empty():
             try:
@@ -60,6 +66,7 @@ class WorldRenderer(mp.Process):
 
 
     def is_rendered(self, cx, cy):
+        """True if the chunk is currently being drawn, False otherwise."""
         if (cx, cy) in self.rendered_chunks: return True
         return False
 
@@ -112,7 +119,7 @@ class WorldRenderer(mp.Process):
 
 
     def render_block(self, render_data, batch):
-        """Add the given render_data to the given RenderedBatch object."""
+        """Add the given render_data to the given RenderedBatch object. This is what takes so long and must be done on the main thread. pyglet.graphics.Batch() can't be passed through a multiprocessing.Queue()."""
         batch.batch.add(*render_data)
 
 
@@ -158,7 +165,7 @@ class WorldRenderer(mp.Process):
 
     def render_queued(self):
         """Render some of the pre_calculated chunks onto the screen by putting them into a batch to be drawn.
-        Tries to finish the incompletely rendered chunk before getting another pre-calculated chunk."""
+        Tries to finish the incompletely rendered chunk before getting another pre-calculated chunk. Will only put config.WorldRenderer.MaxBlocksPerFrame blocks into a batch to be drawn every frame."""
         if self.finished_chunks.full():
             self.log.warning("Throwing out some finished chunks from render queue.")
             for i in range(config.WorldRenderer.TrashChunksOnFullFinishedQueue):
@@ -181,6 +188,7 @@ class WorldRenderer(mp.Process):
 
 
     def draw(self):
+        """Actually draw all the rendered chunks."""
 
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
         glMatrixMode(GL_MODELVIEW)
@@ -191,7 +199,7 @@ class WorldRenderer(mp.Process):
 
 
     def run(self):
-        """What the renderer process runs in the background."""
+        """What the renderer process runs in the background. Receives chunk requests, gets the chunk data, pre-calculates vertex and colour arrays, sends the results to the main thread."""
         while self.__running__.value:
             try:
                 cx, cy = self.chunks_to_render.get(timeout=config.WorldRenderer.WaitTime)
@@ -208,11 +216,12 @@ class WorldRenderer(mp.Process):
 
 
     def block_colour(self, block):
+        """Get the block colour array for a given block."""
        return config.BlockColour[block.block_type.value]
 
 
     def block_vertices(self, x, y, z, block):
-        """Returns the vertices index and the actual screen vertices for a cube, in the correct order."""
+        """Returns the vertices index and the actual screen vertices for a cube, in the correct order (CCW right now based on OpenGL config."""
         n = config.World.VoxelSize
         x = x*n*2
         y = y*n*2

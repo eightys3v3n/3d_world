@@ -26,6 +26,8 @@ def legacy_get_top_block_height(world_client, abx, aby):
 
 
 class Player:
+  """Keeps track of the player's position and the direction they are looking."""
+
   def __init__(self):
     self.position = variables.player.initial_position
     self.current_block = [0, 0, 0]
@@ -35,6 +37,7 @@ class Player:
 
 
   def move(self,x,y,z):
+    """Move the player; +x is toward where the player is looking, +y is up, +z is right."""
     hyp = hypot(x,y)
     ang = degrees(atan2(y,x))
     ang = round(ang,4)
@@ -48,6 +51,7 @@ class Player:
 
 
   def look(self,x,y):
+    """Look at angle x and angle y; x is up/down, y is left/right."""
     self.heading[0] += x
     self.heading[1] += y
 
@@ -63,25 +67,13 @@ class Player:
 
 
 class PlayerManager():
+  """Handles moving of the player, physics, and access to the player. This would be what handles collisions or what ever until I have a physics simulator class."""
+
   def __init__(self, world):
     self.player = Player()
     self.world = world
-    self._flying = True
     self.velocity = utils.Position(0, 0, 0)
-    self.can_jump = True
     self.prev = utils.Position(0, 0, 0)
-
-
-  def flying(self, status=None):
-    if status is None:
-      status = not self._flying
-
-    if status:
-      self.velocity.z = 0
-      self._flying = True
-
-    else:
-      self._flying = False
 
 
   def get_position(self):
@@ -106,10 +98,7 @@ class PlayerManager():
     if abs(z) > variables.max_fall_speed:
       z = variables.max_fall_speed * z/-z
 
-    if self._flying:
-      self.player.move(x,y,z)
-    else:
-      self.player.move(x,y,z)
+    self.player.move(x,y,z)
 
     if variables.player.debug.print_player_position:
       self.print_position()
@@ -142,18 +131,6 @@ class PlayerManager():
     print(s)
 
 
-  def jump(self):
-    if self.can_jump:
-      self.velocity.z += 7
-      self.can_jump = False
-      print("jump")
-
-    else:
-      print("can't jump")
-
-    self.print_position()
-
-
   def standing_on(self):
     return [self.player.current_block[0],
             self.player.current_block[2],
@@ -168,43 +145,6 @@ class PlayerManager():
 
   def get_visible(self):
     return self.player.visible
-
-
-  def update_physics(self, dt):
-    """
-    suppose to make the player fall to the ground if they aren't flying
-    """
-    self.set_standing_on(legacy_get_abs_block_pos(self.player.position))
-
-    if not self._flying:
-      # get the highest block in the x,z that the player is in.
-      # should actually be 'get the highest block below the player'
-      top_block_height = legacy_get_top_block_height(self.world_client, *self.standing_on())
-
-      if top_block_height != None:                          # if there is a block in x, z
-        if self.standing_on()[2] > top_block_height+self.player.height:    # if the player is above the top block
-          print("Falling!")
-          self.velocity += variables.player_fall_acc
-          self.can_jump = False
-          #self.move(variables.fall_speed.x, variables.fall_speed.y, variables.fall_speed.z)     # should move the player down
-
-        elif self.standing_on()[2] == top_block_height+self.player.height:
-          if self.velocity.z < 0:
-            print("standing on the ground, resetting down velocity")
-            self.velocity.z = 0
-          self.can_jump = True
-
-        else:
-          print("standing in the ground, raising to surface")
-          self.can_jump = True
-          self.player.move(0, 0, cube_size*2)
-          self.velocity.z = 0
-
-    if self.prev != self.velocity:
-      self.prev = self.velocity
-      print("velocity ", self.velocity)
-
-    self.move(self.velocity.x, self.velocity.y, self.velocity.z)
 
 
   def draw_perspective(self):

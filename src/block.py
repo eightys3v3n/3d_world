@@ -2,6 +2,7 @@ import config, unittest
 
 
 class Block():
+  """A single voxel in the world and it's type."""
   def __init__(self, block_type=None):
     if not isinstance(block_type, config.BlockType):
       raise ValueError("Invalid block type {}".format(block_type))

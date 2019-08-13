@@ -34,11 +34,13 @@ class WorldGenerator:
 
 
     def start(self):
+        """Start all the generation slaves."""
         for g in self.generators:
             g.start()
 
 
     def stop(self):
+        """Stop all the generation slaves."""
         self.__running__.value = False
         for g in self.generators:
             if g.is_alive():
@@ -86,6 +88,7 @@ class WorldGenerationSlave(mp.Process):
 
 
     def run(self):
+        """The loop that generation slaves execute."""
         while self.__running__.value:
             try:
                 (cx, cy) = self.chunks_to_generate.get(timeout=config.WorldGenerator.WaitTime)

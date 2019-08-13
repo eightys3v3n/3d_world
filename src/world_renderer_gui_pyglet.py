@@ -3,6 +3,9 @@ from pyglet.gl import *
 from enum import Enum
 
 
+"""This is the same as the Minimap class except it is using PyGlet. This causes problems like having to switch between OpenGL configurations."""
+
+
 class Colour(Enum):
 
     White = (1.0, 1.0, 1.0)
