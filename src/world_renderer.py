@@ -217,7 +217,7 @@ class WorldRenderer(mp.Process):
 
     def block_colour(self, block):
         """Get the block colour array for a given block."""
-       return config.BlockColour[block.block_type.value]
+        return config.BlockColour[block.block_type.value]
 
 
     def block_vertices(self, x, y, z, block):
