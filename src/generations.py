@@ -13,10 +13,7 @@ Change this file to change how the world generates or what generation type is us
 
 def pick_generation(cx, cy, world_client):
     """This is run for every chunk that is generated. So if you want an entire world of SimplexHeight, always return SimplexHeight. If you want to do something with biomes, store and retrieve the biome from world_client and return the correct world generation class."""
-    if cx > 0:
-        return SimplexHeight
-    else:
-        return PerlinHeight
+    return SimplexHeight
 
 
 def translate(num, min_in, max_in, min_out, max_out):
@@ -54,11 +51,12 @@ class Generation:
 
 class SimplexHeight(Generation):
     """This generation type uses simplex noise to decide on the height of the ground. It then creates a grass only world. See the Generation docstring for documentation on the noise algorithm variables."""
-    X_SCALE = 400
-    Z_SCALE = 400
-    OCTAVES = 4
+    X_SCALE = 1000
+    Z_SCALE = 1000
+    OCTAVES = 5
     PERSISTENCE = 0.5
-    MULTIPLIER = 10
+    LACUNARITY = 2.0
+    MULTIPLIER = 1
     DEPTH = 5 # How many blocks deep to go
 
 
@@ -69,7 +67,9 @@ class SimplexHeight(Generation):
                           abz / cls.Z_SCALE,
                           config.WorldGenerator.Seed,
                           octaves=cls.OCTAVES,
-                          persistence=cls.PERSISTENCE)
+                          persistence=cls.PERSISTENCE,
+                          lacunarity=cls.LACUNARITY
+        )
 
         n *= cls.MULTIPLIER
         n = translate(n, 0, cls.MULTIPLIER, 0, config.WorldDataServer.WorldHeight)
