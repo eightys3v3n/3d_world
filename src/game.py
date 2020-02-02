@@ -97,7 +97,8 @@ class Game(pyglet.window.Window):
     if sys.platform == 'linux':
       os.nice(0)
 
-    pyglet.clock.set_fps_limit(variables.maximum_framerate)      # set the maximum framerate
+    #pyglet.clock.set_fps_limit(variables.maximum_framerate)      # set the maximum framerate
+    # Removed in recent pyglet?
 
     # PyGlet does this weird thing where the on_draw method is only called if something happens. So if you don't press keys, the game appears to be running at 1 FPS. This prevents that and makes sure the game runs at least 60 FPS. Decreasing this number doesn't seem to make the game run faster. 
     if config.Game.PreventSleep:
