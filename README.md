@@ -13,6 +13,9 @@ cd src/
 python main.py
 ```
 
+To profile the application using cProfile, `python main.py profile`
+To debug the application use `python main.py debug`
+
 # Stuff to know:
 - The controls are WASD and the mouse. Just click in the window to capture the mouse; escape to let the mouse go. Scroll up and down to go faster or slower. Plus and Minus are used to increase and decrease the number of blocks that can be drawn in a single frame. Decrease if the game runs slow or stuttery.
 - All the configuration options and settings are in config.py and variables.py.

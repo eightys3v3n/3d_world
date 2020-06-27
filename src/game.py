@@ -373,6 +373,7 @@ class Game(pyglet.window.Window):
 
     self.player.draw_perspective() # Set the FOV, move the player 'camera', and looking direction.
     self.generate_view() # Do all the generating of chunks and rendering of chunks.
+    
     self.world_renderer.draw() # Draw the world.
 
     # Update the second window if it's enabled.
