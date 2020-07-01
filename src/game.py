@@ -23,54 +23,14 @@ import itertools
 class Game(pyglet.window.Window):
   """The main game class."""
   def __init__(self):
+    self.focus = False     # whether the mouse is locked or not
+    self.debug = False     # whether to start the debugger next frame
+
     self.setup_logger()
     self.setup_window()
-
-
-
-    # setup keyboard event handling so we can ask if a key is currently pressed rather than only knowing when a key is pressed.
-    self.log.info("Setting up key state handler...")
-    self.keys = pyglet.window.key.KeyStateHandler()  # allows for a is_this_key_pressed check
-    self.push_handlers(self.keys)                    # tells pyglet that it should keep track of when keys are pressed
-    self.log.info("Setup key state handler.")
-
-    # Setup the world data storange.
-    if sys.platform == 'linux': # Set the niceness a little lower on Linux so the main thread runs smooth at all times.
-      os.nice(2)
-    self.log.info("Setting up world data server...")
-    self.world_server = world_data.WorldDataServer(self.log) # Stores the world data.
-    self.world_server.start() # Start the server.
-    self.world_client = self.world_server.get_main_client() # Get the client that is used by the main thread and to create more clients.
-    self.log.info("Setup world data server.")
-    if sys.platform == 'linux': # Set the niceness back to normal.
-      os.nice(0)
-
-    # Create some more clients for the various processes we will start.
-    self.log.info("Getting extra world data clients for other processes...")
-    generator_world_client = self.world_client.new_client("World Generator")[config.WorldRequestData.NewClient]
-    renderer_world_client = self.world_client.new_client("World Renderer")[config.WorldRequestData.NewClient]
-    self.log.info("Got extra world data clients for other processes.")
-
-    # Create the player object.
-    self.log.info("Creating player...")
-    self.player = player.PlayerManager(self.world_client)        # the player and/or perspective
-    self.log.info("Created player.")
-
-    # Create and start the world generator process.
-    self.log.info("Creating and starting world generator...")
-    if sys.platform == 'linux':
-      os.nice(10)
-    self.world_generator = world_generator.WorldGenerator(generator_world_client, self.log) # generates new chunks
-    self.world_generator.start()
-    self.log.info("Created and started world generator.")
-
-    # Create and start the world renderer process.
-    self.log.info("Creating and starting world renderer...")
-    if sys.platform == 'linux':
-      os.nice(8)
-    self.world_renderer = WorldRenderer(renderer_world_client, self.log)          # draws the world
-    self.world_renderer.start()
-    self.log.info("Created and started world renderer.")
+    self.setup_keyhandler()
+    self.setup_workers()
+    self.setup_player()
 
     # Create a second window using PyGame for debugging or whatever it currently does.
     if config.Game.Minimap:
@@ -86,10 +46,6 @@ class Game(pyglet.window.Window):
     if config.Game.PreventSleep:
       pyglet.clock.schedule_interval(self.prevent_sleep, 1.0/60.0) # this prevents the application from 'smartly' sleeping when idle
 
-
-
-    self.focus = False     # whether the mouse is locked or not
-    self.debug = False     # whether to start the debugger next frame
 
 
     # Pre-generate a bunch of blocks and wait for them to finish so as to not clutter the logs.
@@ -146,6 +102,56 @@ class Game(pyglet.window.Window):
     glCullFace(GL_BACK)     # remove the backs of faces
     glDepthRange(0, 1)      # Show as much depth wise as possible
     self.log.info("Configured OpenGL.")
+
+
+  def setup_keyhandler(self):
+    # setup keyboard event handling so we can ask if a key is currently pressed rather than only knowing when a key is pressed.
+    self.log.info("Setting up key state handler...")
+    self.keys = pyglet.window.key.KeyStateHandler()  # allows for a is_this_key_pressed check
+    self.push_handlers(self.keys)                    # tells pyglet that it should keep track of when keys are pressed
+    self.log.info("Setup key state handler.")
+
+
+  def setup_workers(self):
+    # Setup the world data storange.
+    if sys.platform == 'linux': # Set the niceness a little lower on Linux so the main thread runs smooth at all times.
+      os.nice(2)
+    self.log.info("Setting up world data server...")
+    self.world_server = world_data.WorldDataServer(self.log) # Stores the world data.
+    self.world_server.start() # Start the server.
+    self.world_client = self.world_server.get_main_client() # Get the client that is used by the main thread and to create more clients.
+    self.log.info("Setup world data server.")
+    if sys.platform == 'linux': # Set the niceness back to normal.
+      os.nice(0)
+
+    # Create some more clients for the various processes we will start.
+    self.log.info("Getting extra world data clients for other processes...")
+    generator_world_client = self.world_client.new_client("World Generator")[config.WorldRequestData.NewClient]
+    renderer_world_client = self.world_client.new_client("World Renderer")[config.WorldRequestData.NewClient]
+    self.log.info("Got extra world data clients for other processes.")
+
+    # Create and start the world generator process.
+    self.log.info("Creating and starting world generator...")
+    if sys.platform == 'linux':
+      os.nice(10)
+    self.world_generator = world_generator.WorldGenerator(generator_world_client, self.log) # generates new chunks
+    self.world_generator.start()
+    self.log.info("Created and started world generator.")
+
+    # Create and start the world renderer process.
+    self.log.info("Creating and starting world renderer...")
+    if sys.platform == 'linux':
+      os.nice(8)
+    self.world_renderer = WorldRenderer(renderer_world_client, self.log)          # draws the world
+    self.world_renderer.start()
+    self.log.info("Created and started world renderer.")
+
+
+  def setup_player(self):
+    # Create the player object.
+    self.log.info("Creating player...")
+    self.player = player.PlayerManager(self.world_client)        # the player and/or perspective
+    self.log.info("Created player.")
 
 
   def generate_radius(self, cx, cy, radius):
