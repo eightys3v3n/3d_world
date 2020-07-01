@@ -24,15 +24,9 @@ class Game(pyglet.window.Window):
   """The main game class."""
   def __init__(self):
     self.setup_logger()
+    self.setup_window()
 
-    # Setup the window
-    self.log.info("Initializing window...")
-    super(Game, self).__init__(resizable=True)                     # initialize the window
-    if config.Window.Width is not None and config.Window.Height is not None:
-      self.set_size(config.Window.Width, config.Window.Height)       # set the window size
-    self.set_exclusive_mouse(False)                  # don't lock the cursor to this window to start with.
-    self.set_vsync(variables.vsync)                  # turn off vsync so the framerate isn't limited at your refresh rate. Doesn't work on my computer anyways so I have it off.
-    self.log.info("Initialized window.")
+
 
     # setup keyboard event handling so we can ask if a key is currently pressed rather than only knowing when a key is pressed.
     self.log.info("Setting up key state handler...")
@@ -92,15 +86,7 @@ class Game(pyglet.window.Window):
     if config.Game.PreventSleep:
       pyglet.clock.schedule_interval(self.prevent_sleep, 1.0/60.0) # this prevents the application from 'smartly' sleeping when idle
 
-    # Initially set all the GL flags and what not. There are cases where this needs to be set every frame (like having two PyGlet windows. That's why the Minimap is written in PyGame.
-    self.log.info("Configuring OpenGL...")
-    glEnable(GL_DEPTH_TEST) # gpu can tell when stuff is infront or behind
-    glDepthFunc(GL_LEQUAL)    # anything closer should be drawn
-    glEnable(GL_CULL_FACE)  # don't draw faces that are behind something
-    glFrontFace(GL_CCW)     # used to determine the 'front' of a 2d shape
-    glCullFace(GL_BACK)     # remove the backs of faces
-    glDepthRange(0, 1)      # Show as much depth wise as possible
-    self.log.info("Configured OpenGL.")
+
 
     self.focus = False     # whether the mouse is locked or not
     self.debug = False     # whether to start the debugger next frame
@@ -139,6 +125,27 @@ class Game(pyglet.window.Window):
     self.log.addHandler(h)
     self.log.addHandler(fh)
     self.log.info("Started logging.")
+
+
+  def setup_window(self):
+    # Setup the window
+    self.log.info("Initializing window...")
+    super(Game, self).__init__(resizable=True)                     # initialize the window
+    if config.Window.Width is not None and config.Window.Height is not None:
+      self.set_size(config.Window.Width, config.Window.Height)       # set the window size
+    self.set_exclusive_mouse(False)                  # don't lock the cursor to this window to start with.
+    self.set_vsync(variables.vsync)                  # turn off vsync so the framerate isn't limited at your refresh rate. Doesn't work on my computer anyways so I have it off.
+    self.log.info("Initialized window.")
+
+        # Initially set all the GL flags and what not. There are cases where this needs to be set every frame (like having two PyGlet windows. That's why the Minimap is written in PyGame.
+    self.log.info("Configuring OpenGL...")
+    glEnable(GL_DEPTH_TEST) # gpu can tell when stuff is infront or behind
+    glDepthFunc(GL_LEQUAL)    # anything closer should be drawn
+    glEnable(GL_CULL_FACE)  # don't draw faces that are behind something
+    glFrontFace(GL_CCW)     # used to determine the 'front' of a 2d shape
+    glCullFace(GL_BACK)     # remove the backs of faces
+    glDepthRange(0, 1)      # Show as much depth wise as possible
+    self.log.info("Configured OpenGL.")
 
 
   def generate_radius(self, cx, cy, radius):
