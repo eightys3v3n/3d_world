@@ -23,19 +23,7 @@ import itertools
 class Game(pyglet.window.Window):
   """The main game class."""
   def __init__(self):
-    # Create the logger.
-    self.log = logging.getLogger()
-    h = logging.StreamHandler()
-    h.setLevel(config.Game.ConsoleLogLevel)
-    fh = logging.FileHandler(config.LogFile)
-    f = logging.Formatter(config.LogFormat)
-    ff = logging.Formatter(config.LogFormat)
-    h.setFormatter(f)
-    fh.setFormatter(ff)
-    self.log.addHandler(h)
-    self.log.addHandler(fh)
-
-    self.log.info("Started logging.")
+    self.setup_logger()
 
     # Setup the window
     self.log.info("Initializing window...")
@@ -100,7 +88,7 @@ class Game(pyglet.window.Window):
     #pyglet.clock.set_fps_limit(variables.maximum_framerate)      # set the maximum framerate
     # Removed in recent pyglet? This needs to be fixed or looked into
 
-    # PyGlet does this weird thing where the on_draw method is only called if something happens. So if you don't press keys, the game appears to be running at 1 FPS. This prevents that and makes sure the game runs at least 60 FPS. Decreasing this number doesn't seem to make the game run faster. 
+    # PyGlet does this weird thing where the on_draw method is only called if something happens. So if you don't press keys, the game appears to be running at 1 FPS. This prevents that and makes sure the game runs at least 60 FPS. Decreasing this number doesn't seem to make the game run faster.
     if config.Game.PreventSleep:
       pyglet.clock.schedule_interval(self.prevent_sleep, 1.0/60.0) # this prevents the application from 'smartly' sleeping when idle
 
@@ -136,6 +124,21 @@ class Game(pyglet.window.Window):
     if config.WorldRenderer.InitialDistance > 0:
       print("Rendering initial radius of {}.".format(config.WorldRenderer.InitialDistance))
       self.generate_radius(0, 0, config.WorldRenderer.InitialDistance)
+
+
+  def setup_logger(self):
+    # Create the logger.
+    self.log = logging.getLogger()
+    h = logging.StreamHandler()
+    h.setLevel(config.Game.ConsoleLogLevel)
+    fh = logging.FileHandler(config.LogFile)
+    f = logging.Formatter(config.LogFormat)
+    ff = logging.Formatter(config.LogFormat)
+    h.setFormatter(f)
+    fh.setFormatter(ff)
+    self.log.addHandler(h)
+    self.log.addHandler(fh)
+    self.log.info("Started logging.")
 
 
   def generate_radius(self, cx, cy, radius):
@@ -373,7 +376,7 @@ class Game(pyglet.window.Window):
 
     self.player.draw_perspective() # Set the FOV, move the player 'camera', and looking direction.
     self.generate_view() # Do all the generating of chunks and rendering of chunks.
-    
+
     self.world_renderer.draw() # Draw the world.
 
     # Update the second window if it's enabled.
