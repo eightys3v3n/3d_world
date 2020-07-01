@@ -46,8 +46,6 @@ class Game(pyglet.window.Window):
     if config.Game.PreventSleep:
       pyglet.clock.schedule_interval(self.prevent_sleep, 1.0/60.0) # this prevents the application from 'smartly' sleeping when idle
 
-
-
     # Pre-generate a bunch of blocks and wait for them to finish so as to not clutter the logs.
     #for cx, cy in itertools.product(range(-5, 6), range(-5, 6)):
     #  self.world_generator.request_chunk(cx, cy)
@@ -58,14 +56,7 @@ class Game(pyglet.window.Window):
     if config.Debug.Game.FPS_SPAM: # Create the fps dictionary if we want to spam the current FPS to the console.
       self.fps = {}
 
-    # Generate and attempt to render an initial distance if the config file says so. This happens before drawing.
-    if config.WorldGenerator.InitialDistance > 0:
-      print("Generating initial radius of {}.".format(config.WorldGenerator.InitialDistance))
-      self.generate_radius(0, 0, config.WorldGenerator.InitialDistance)
-
-    if config.WorldRenderer.InitialDistance > 0:
-      print("Rendering initial radius of {}.".format(config.WorldRenderer.InitialDistance))
-      self.generate_radius(0, 0, config.WorldRenderer.InitialDistance)
+    self.pregenerate()
 
 
   def setup_logger(self):
@@ -152,6 +143,17 @@ class Game(pyglet.window.Window):
     self.log.info("Creating player...")
     self.player = player.PlayerManager(self.world_client)        # the player and/or perspective
     self.log.info("Created player.")
+
+
+  def pregenerate(self):
+    # Generate and attempt to render an initial distance if the config file says so. This happens before drawing.
+    if config.WorldGenerator.InitialDistance > 0:
+      print("Generating initial radius of {}.".format(config.WorldGenerator.InitialDistance))
+      self.generate_radius(0, 0, config.WorldGenerator.InitialDistance)
+
+    if config.WorldRenderer.InitialDistance > 0:
+      print("Rendering initial radius of {}.".format(config.WorldRenderer.InitialDistance))
+      self.generate_radius(0, 0, config.WorldRenderer.InitialDistance)
 
 
   def generate_radius(self, cx, cy, radius):
