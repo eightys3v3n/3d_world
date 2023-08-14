@@ -2,5 +2,5 @@ future==0.18.3
 noise==1.2.2
 pyglet==1.4.10
 snakeviz==2.0.1
-tornado==6.3.2
+tornado==6.3.3
 pygame==1.9.6
